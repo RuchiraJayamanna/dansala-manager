@@ -14,7 +14,159 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      budget_items: {
+        Row: {
+          actual_amount: number
+          actual_note: string | null
+          category: string
+          created_at: string
+          id: string
+          item: string
+          planned_amount: number
+          planned_qty: number | null
+          planned_unit_price: number | null
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          actual_amount?: number
+          actual_note?: string | null
+          category?: string
+          created_at?: string
+          id?: string
+          item: string
+          planned_amount?: number
+          planned_qty?: number | null
+          planned_unit_price?: number | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          actual_amount?: number
+          actual_note?: string | null
+          category?: string
+          created_at?: string
+          id?: string
+          item?: string
+          planned_amount?: number
+          planned_qty?: number | null
+          planned_unit_price?: number | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      checklist_items: {
+        Row: {
+          created_at: string
+          due_date: string | null
+          id: string
+          notes: string | null
+          owner: string | null
+          sort_order: number
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          owner?: string | null
+          sort_order?: number
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          owner?: string | null
+          sort_order?: number
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      contributions: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          member_name: string
+          note: string | null
+          paid_at: string | null
+          status: string
+          team: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          member_name: string
+          note?: string | null
+          paid_at?: string | null
+          status?: string
+          team?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          member_name?: string
+          note?: string | null
+          paid_at?: string | null
+          status?: string
+          team?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      team_members: {
+        Row: {
+          attended: boolean
+          contact: string | null
+          created_at: string
+          department: string | null
+          id: string
+          name: string
+          phase: string
+          role: string | null
+          team_name: string
+          updated_at: string
+        }
+        Insert: {
+          attended?: boolean
+          contact?: string | null
+          created_at?: string
+          department?: string | null
+          id?: string
+          name: string
+          phase?: string
+          role?: string | null
+          team_name: string
+          updated_at?: string
+        }
+        Update: {
+          attended?: boolean
+          contact?: string | null
+          created_at?: string
+          department?: string | null
+          id?: string
+          name?: string
+          phase?: string
+          role?: string | null
+          team_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
