@@ -28,8 +28,9 @@ function Dashboard() {
       const checklist = c.data ?? [];
       const done = checklist.filter((x: any) => x.status === "Done").length;
       const contribs = contrib.data ?? [];
-      const collected = contribs.filter((x: any) => x.status === "Completed").reduce((s, r: any) => s + Number(r.amount), 0);
-      const pending = contribs.filter((x: any) => x.status !== "Completed").reduce((s, r: any) => s + Number(r.amount), 0);
+      const paid = ["Paid", "Completed"];
+      const collected = contribs.filter((x: any) => paid.includes(x.status)).reduce((s, r: any) => s + Number(r.amount), 0);
+      const pending = contribs.filter((x: any) => !paid.includes(x.status)).reduce((s, r: any) => s + Number(r.amount), 0);
       return { planned, actual, members, checklist: { total: checklist.length, done }, collected, pending };
     },
   });

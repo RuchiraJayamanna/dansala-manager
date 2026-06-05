@@ -7,10 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, FileSpreadsheet, FileText, AlertCircle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
+import { useMasterOptions } from "@/lib/master";
+import { exportXlsx, exportPdf } from "@/lib/export";
 
 export const Route = createFileRoute("/_authenticated/checklist")({
   head: () => ({ meta: [{ title: "Checklist — Dansala Manager" }] }),
@@ -18,7 +20,6 @@ export const Route = createFileRoute("/_authenticated/checklist")({
 });
 
 type C = { id: string; title: string; owner: string | null; status: string; notes: string | null; due_date: string | null; sort_order: number };
-const STATUSES = ["Pending", "In Progress", "Done", "Blocked"];
 
 const statusColor: Record<string, string> = {
   "Pending": "bg-muted text-muted-foreground",
@@ -29,6 +30,8 @@ const statusColor: Record<string, string> = {
 
 function ChecklistPage() {
   const qc = useQueryClient();
+  const { data: statusOpts = [] } = useMasterOptions("checklist_status");
+  const STATUSES = statusOpts.map(s => s.value);
   const { data: items = [] } = useQuery({
     queryKey: ["checklist"],
     queryFn: async () => {
@@ -59,15 +62,34 @@ function ChecklistPage() {
   });
 
   const done = items.filter(i => i.status === "Done").length;
+  const today = new Date().toISOString().slice(0, 10);
+
+  const handleXlsx = () => {
+    exportXlsx("MISL_Dansala_Checklist", [{ name: "Checklist", rows: [
+      ["MISL Dansala 2026 — Operations Checklist"], [`${done} of ${items.length} complete`], [],
+      ["Task", "Owner", "Status", "Due date", "Notes"],
+      ...items.map(i => [i.title, i.owner ?? "", i.status, i.due_date ?? "", i.notes ?? ""]),
+    ]}]);
+  };
+  const handlePdf = () => {
+    exportPdf("MISL_Dansala_Checklist", "MISL Dansala 2026 — Operations Checklist", [{
+      head: ["Task", "Owner", "Status", "Due"],
+      body: items.map(i => [i.title, i.owner ?? "—", i.status, i.due_date ?? "—"]),
+    }], `${done} of ${items.length} complete`);
+  };
 
   return (
     <div className="p-8 space-y-6 max-w-5xl">
       <PageHeader title="Operations checklist" subtitle={`${done} of ${items.length} complete`}
         action={
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Add task</Button></DialogTrigger>
-            <NewItemDialog onSubmit={(v) => save.mutate(v)} />
-          </Dialog>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleXlsx}><FileSpreadsheet className="h-4 w-4 mr-2" />Excel</Button>
+            <Button variant="outline" onClick={handlePdf}><FileText className="h-4 w-4 mr-2" />PDF</Button>
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Add task</Button></DialogTrigger>
+              <NewItemDialog statuses={STATUSES} onSubmit={(v) => save.mutate(v)} />
+            </Dialog>
+          </div>
         } />
 
       <Card>
@@ -75,13 +97,18 @@ function ChecklistPage() {
           {items.map(i => (
             <div key={i.id} className="p-4 flex items-center gap-4">
               <div className="flex-1">
-                <div className="font-medium">{i.title}</div>
-                <div className="text-xs text-muted-foreground">
-                  {i.owner ? `Owner: ${i.owner}` : "Unassigned"}{i.due_date ? ` · Due ${i.due_date}` : ""}{i.notes ? ` · ${i.notes}` : ""}
+                <div className="font-medium flex items-center gap-2">
+                  {i.title}
+                  {i.due_date && i.due_date < today && i.status !== "Done" && (
+                    <span className="inline-flex items-center gap-1 text-xs text-destructive"><AlertCircle className="h-3 w-3" />Overdue</span>
+                  )}
                 </div>
+                <div className="text-xs text-muted-foreground">{i.notes ?? ""}</div>
               </div>
               <Input className="w-44" placeholder="Assign owner" defaultValue={i.owner ?? ""}
                 onBlur={e => e.target.value !== (i.owner ?? "") && update.mutate({ id: i.id, v: { owner: e.target.value } })} />
+              <Input className="w-40" type="date" defaultValue={i.due_date ?? ""}
+                onBlur={e => e.target.value !== (i.due_date ?? "") && update.mutate({ id: i.id, v: { due_date: e.target.value || null } })} />
               <Select value={i.status} onValueChange={(v) => update.mutate({ id: i.id, v: { status: v } })}>
                 <SelectTrigger className={`w-36 ${statusColor[i.status]}`}><SelectValue /></SelectTrigger>
                 <SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
@@ -96,7 +123,7 @@ function ChecklistPage() {
   );
 }
 
-function NewItemDialog({ onSubmit }: { onSubmit: (v: Partial<C>) => void }) {
+function NewItemDialog({ statuses, onSubmit }: { statuses: string[]; onSubmit: (v: Partial<C>) => void }) {
   const [f, setF] = useState<Partial<C>>({ title: "", owner: "", status: "Pending", notes: "", due_date: "" });
   return (
     <DialogContent>
@@ -106,6 +133,12 @@ function NewItemDialog({ onSubmit }: { onSubmit: (v: Partial<C>) => void }) {
         <div className="grid grid-cols-2 gap-3">
           <div><Label>Owner</Label><Input value={f.owner ?? ""} onChange={e => setF({ ...f, owner: e.target.value })} /></div>
           <div><Label>Due date</Label><Input type="date" value={f.due_date ?? ""} onChange={e => setF({ ...f, due_date: e.target.value })} /></div>
+          <div className="col-span-2"><Label>Status</Label>
+            <Select value={f.status} onValueChange={v => setF({ ...f, status: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{statuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
         </div>
         <div><Label>Notes</Label><Input value={f.notes ?? ""} onChange={e => setF({ ...f, notes: e.target.value })} /></div>
         <DialogFooter><Button type="submit">Add</Button></DialogFooter>

@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, redirect, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { LayoutDashboard, Wallet, Users, ListChecks, HandCoins, LogOut, Utensils } from "lucide-react";
+import { LayoutDashboard, Wallet, Users, ListChecks, HandCoins, LogOut, Utensils, UserCog, Database, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -16,10 +16,13 @@ export const Route = createFileRoute("/_authenticated")({
 
 const nav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/summary", label: "Summary", icon: BarChart3 },
   { to: "/budget", label: "Budget", icon: Wallet },
   { to: "/teams", label: "Teams", icon: Users },
   { to: "/checklist", label: "Checklist", icon: ListChecks },
   { to: "/contributions", label: "Contributions", icon: HandCoins },
+  { to: "/staff", label: "Staff", icon: UserCog },
+  { to: "/master", label: "Master Data", icon: Database },
 ] as const;
 
 function Layout() {

@@ -100,6 +100,7 @@ export type Database = {
           member_name: string
           note: string | null
           paid_at: string | null
+          staff_id: string | null
           status: string
           team: string
           updated_at: string
@@ -111,6 +112,7 @@ export type Database = {
           member_name: string
           note?: string | null
           paid_at?: string | null
+          staff_id?: string | null
           status?: string
           team?: string
           updated_at?: string
@@ -122,8 +124,86 @@ export type Database = {
           member_name?: string
           note?: string | null
           paid_at?: string | null
+          staff_id?: string | null
           status?: string
           team?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contributions_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      master_options: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          option_type: string
+          sort_order: number
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          option_type: string
+          sort_order?: number
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          option_type?: string
+          sort_order?: number
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
+      staff: {
+        Row: {
+          active: boolean
+          contact: string | null
+          created_at: string
+          department: string | null
+          designation: string | null
+          email: string | null
+          employee_no: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          contact?: string | null
+          created_at?: string
+          department?: string | null
+          designation?: string | null
+          email?: string | null
+          employee_no?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          contact?: string | null
+          created_at?: string
+          department?: string | null
+          designation?: string | null
+          email?: string | null
+          employee_no?: string | null
+          id?: string
+          name?: string
           updated_at?: string
         }
         Relationships: []
@@ -138,6 +218,7 @@ export type Database = {
           name: string
           phase: string
           role: string | null
+          staff_id: string | null
           team_name: string
           updated_at: string
         }
@@ -150,6 +231,7 @@ export type Database = {
           name: string
           phase?: string
           role?: string | null
+          staff_id?: string | null
           team_name: string
           updated_at?: string
         }
@@ -162,10 +244,19 @@ export type Database = {
           name?: string
           phase?: string
           role?: string | null
+          staff_id?: string | null
           team_name?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "team_members_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
