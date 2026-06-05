@@ -78,18 +78,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
+      { title: "Dansala Event Manager" },
       { name: "description", content: "Dansala Maestro streamlines Dansala event management, replacing manual processes with a modern digital solution." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
+      { property: "og:title", content: "Dansala Event Manager" },
       { property: "og:description", content: "Dansala Maestro streamlines Dansala event management, replacing manual processes with a modern digital solution." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "Lovable App" },
+      { name: "twitter:title", content: "Dansala Event Manager" },
       { name: "twitter:description", content: "Dansala Maestro streamlines Dansala event management, replacing manual processes with a modern digital solution." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f745f07f-eed9-4d31-bb9f-eb7e418a8811/id-preview-deb74281--0f35da79-2b5d-47f6-bb86-c86ccf7d775c.lovable.app-1780649309857.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f745f07f-eed9-4d31-bb9f-eb7e418a8811/id-preview-deb74281--0f35da79-2b5d-47f6-bb86-c86ccf7d775c.lovable.app-1780649309857.png" },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/028600c6-3ef2-497f-9506-d239d3ca12a1" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/028600c6-3ef2-497f-9506-d239d3ca12a1" },
     ],
     links: [
       {
