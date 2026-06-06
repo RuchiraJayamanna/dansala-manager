@@ -21,6 +21,7 @@ import { Route as AuthenticatedContributionsRouteImport } from './routes/_authen
 import { Route as AuthenticatedChecklistRouteImport } from './routes/_authenticated/checklist'
 import { Route as AuthenticatedBudgetRouteImport } from './routes/_authenticated/budget'
 import { Route as AuthenticatedAgendaRouteImport } from './routes/_authenticated/agenda'
+import { Route as AuthenticatedSetupTypeRouteImport } from './routes/_authenticated/setup.$type'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -82,6 +83,11 @@ const AuthenticatedAgendaRoute = AuthenticatedAgendaRouteImport.update({
   path: '/agenda',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSetupTypeRoute = AuthenticatedSetupTypeRouteImport.update({
+  id: '/setup/$type',
+  path: '/setup/$type',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/staff': typeof AuthenticatedStaffRoute
   '/summary': typeof AuthenticatedSummaryRoute
   '/teams': typeof AuthenticatedTeamsRoute
+  '/setup/$type': typeof AuthenticatedSetupTypeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -108,6 +115,7 @@ export interface FileRoutesByTo {
   '/staff': typeof AuthenticatedStaffRoute
   '/summary': typeof AuthenticatedSummaryRoute
   '/teams': typeof AuthenticatedTeamsRoute
+  '/setup/$type': typeof AuthenticatedSetupTypeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -123,6 +131,7 @@ export interface FileRoutesById {
   '/_authenticated/staff': typeof AuthenticatedStaffRoute
   '/_authenticated/summary': typeof AuthenticatedSummaryRoute
   '/_authenticated/teams': typeof AuthenticatedTeamsRoute
+  '/_authenticated/setup/$type': typeof AuthenticatedSetupTypeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -138,6 +147,7 @@ export interface FileRouteTypes {
     | '/staff'
     | '/summary'
     | '/teams'
+    | '/setup/$type'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -151,6 +161,7 @@ export interface FileRouteTypes {
     | '/staff'
     | '/summary'
     | '/teams'
+    | '/setup/$type'
   id:
     | '__root__'
     | '/'
@@ -165,6 +176,7 @@ export interface FileRouteTypes {
     | '/_authenticated/staff'
     | '/_authenticated/summary'
     | '/_authenticated/teams'
+    | '/_authenticated/setup/$type'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -259,6 +271,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAgendaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/setup/$type': {
+      id: '/_authenticated/setup/$type'
+      path: '/setup/$type'
+      fullPath: '/setup/$type'
+      preLoaderRoute: typeof AuthenticatedSetupTypeRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -272,6 +291,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedStaffRoute: typeof AuthenticatedStaffRoute
   AuthenticatedSummaryRoute: typeof AuthenticatedSummaryRoute
   AuthenticatedTeamsRoute: typeof AuthenticatedTeamsRoute
+  AuthenticatedSetupTypeRoute: typeof AuthenticatedSetupTypeRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -284,6 +304,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedStaffRoute: AuthenticatedStaffRoute,
   AuthenticatedSummaryRoute: AuthenticatedSummaryRoute,
   AuthenticatedTeamsRoute: AuthenticatedTeamsRoute,
+  AuthenticatedSetupTypeRoute: AuthenticatedSetupTypeRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
