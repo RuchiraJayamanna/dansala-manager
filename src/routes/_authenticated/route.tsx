@@ -29,20 +29,22 @@ const eventNav = [
   { to: "/contributions", label: "Contributions", icon: HandCoins },
 ] as const;
 
-const setupNav = [
+const topSetupNav = [
   { to: "/events", label: "Events / Projects", icon: CalendarRange },
   { to: "/staff", label: "Staff", icon: UserCog },
-  { to: "/setup/budget_category", label: "Budget Categories" },
-  { to: "/setup/team_group", label: "Team Groups" },
-  { to: "/setup/department", label: "Departments" },
-  { to: "/setup/designation", label: "Designations" },
-  { to: "/setup/dansala_type", label: "Dansala Types" },
-  { to: "/setup/unit", label: "Units of Measure" },
-  { to: "/setup/phase", label: "Event Phases" },
-  { to: "/setup/member_role", label: "Member Roles" },
-  { to: "/setup/checklist_status", label: "Checklist Statuses" },
-  { to: "/setup/contribution_status", label: "Contribution Statuses" },
-  { to: "/setup/contribution_team", label: "Contribution Teams" },
+] as const;
+const setupTypes = [
+  { type: "budget_category", label: "Budget Categories" },
+  { type: "team_group", label: "Team Groups" },
+  { type: "department", label: "Departments" },
+  { type: "designation", label: "Designations" },
+  { type: "dansala_type", label: "Dansala Types" },
+  { type: "unit", label: "Units of Measure" },
+  { type: "phase", label: "Event Phases" },
+  { type: "member_role", label: "Member Roles" },
+  { type: "checklist_status", label: "Checklist Statuses" },
+  { type: "contribution_status", label: "Contribution Statuses" },
+  { type: "contribution_team", label: "Contribution Teams" },
 ] as const;
 
 function Layout() {
@@ -92,7 +94,13 @@ function Layout() {
           <SectionLabel>Event</SectionLabel>
           {eventNav.map(item => <NavItem key={item.to} to={item.to} label={item.label} icon={item.icon} active={pathname.startsWith(item.to)} />)}
           <SectionLabel>Setup</SectionLabel>
-          {setupNav.map(item => <NavItem key={item.to} to={item.to} label={item.label} icon={(item as any).icon} active={pathname === item.to || pathname.startsWith(item.to + "/")} />)}
+          {topSetupNav.map(item => <NavItem key={item.to} to={item.to} label={item.label} icon={item.icon} active={pathname.startsWith(item.to)} />)}
+          {setupTypes.map(s => (
+            <Link key={s.type} to="/setup/$type" params={{ type: s.type }}
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${pathname === `/setup/${s.type}` ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
+              <span className="w-4" />{s.label}
+            </Link>
+          ))}
           <SectionLabel>Admin</SectionLabel>
           <NavItem to="/settings" label="Settings" icon={Settings} active={pathname.startsWith("/settings")} />
         </nav>
