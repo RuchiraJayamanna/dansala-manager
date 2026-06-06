@@ -15,7 +15,6 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedTeamsRouteImport } from './routes/_authenticated/teams'
 import { Route as AuthenticatedSummaryRouteImport } from './routes/_authenticated/summary'
 import { Route as AuthenticatedStaffRouteImport } from './routes/_authenticated/staff'
-import { Route as AuthenticatedMasterRouteImport } from './routes/_authenticated/master'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedContributionsRouteImport } from './routes/_authenticated/contributions'
 import { Route as AuthenticatedChecklistRouteImport } from './routes/_authenticated/checklist'
@@ -50,11 +49,6 @@ const AuthenticatedStaffRoute = AuthenticatedStaffRouteImport.update({
   path: '/staff',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedMasterRoute = AuthenticatedMasterRouteImport.update({
-  id: '/master',
-  path: '/master',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -84,7 +78,6 @@ export interface FileRoutesByFullPath {
   '/checklist': typeof AuthenticatedChecklistRoute
   '/contributions': typeof AuthenticatedContributionsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
-  '/master': typeof AuthenticatedMasterRoute
   '/staff': typeof AuthenticatedStaffRoute
   '/summary': typeof AuthenticatedSummaryRoute
   '/teams': typeof AuthenticatedTeamsRoute
@@ -96,7 +89,6 @@ export interface FileRoutesByTo {
   '/checklist': typeof AuthenticatedChecklistRoute
   '/contributions': typeof AuthenticatedContributionsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
-  '/master': typeof AuthenticatedMasterRoute
   '/staff': typeof AuthenticatedStaffRoute
   '/summary': typeof AuthenticatedSummaryRoute
   '/teams': typeof AuthenticatedTeamsRoute
@@ -110,7 +102,6 @@ export interface FileRoutesById {
   '/_authenticated/checklist': typeof AuthenticatedChecklistRoute
   '/_authenticated/contributions': typeof AuthenticatedContributionsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
-  '/_authenticated/master': typeof AuthenticatedMasterRoute
   '/_authenticated/staff': typeof AuthenticatedStaffRoute
   '/_authenticated/summary': typeof AuthenticatedSummaryRoute
   '/_authenticated/teams': typeof AuthenticatedTeamsRoute
@@ -124,7 +115,6 @@ export interface FileRouteTypes {
     | '/checklist'
     | '/contributions'
     | '/dashboard'
-    | '/master'
     | '/staff'
     | '/summary'
     | '/teams'
@@ -136,7 +126,6 @@ export interface FileRouteTypes {
     | '/checklist'
     | '/contributions'
     | '/dashboard'
-    | '/master'
     | '/staff'
     | '/summary'
     | '/teams'
@@ -149,7 +138,6 @@ export interface FileRouteTypes {
     | '/_authenticated/checklist'
     | '/_authenticated/contributions'
     | '/_authenticated/dashboard'
-    | '/_authenticated/master'
     | '/_authenticated/staff'
     | '/_authenticated/summary'
     | '/_authenticated/teams'
@@ -205,13 +193,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedStaffRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/master': {
-      id: '/_authenticated/master'
-      path: '/master'
-      fullPath: '/master'
-      preLoaderRoute: typeof AuthenticatedMasterRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -248,7 +229,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedChecklistRoute: typeof AuthenticatedChecklistRoute
   AuthenticatedContributionsRoute: typeof AuthenticatedContributionsRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
-  AuthenticatedMasterRoute: typeof AuthenticatedMasterRoute
   AuthenticatedStaffRoute: typeof AuthenticatedStaffRoute
   AuthenticatedSummaryRoute: typeof AuthenticatedSummaryRoute
   AuthenticatedTeamsRoute: typeof AuthenticatedTeamsRoute
@@ -259,7 +239,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedChecklistRoute: AuthenticatedChecklistRoute,
   AuthenticatedContributionsRoute: AuthenticatedContributionsRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
-  AuthenticatedMasterRoute: AuthenticatedMasterRoute,
   AuthenticatedStaffRoute: AuthenticatedStaffRoute,
   AuthenticatedSummaryRoute: AuthenticatedSummaryRoute,
   AuthenticatedTeamsRoute: AuthenticatedTeamsRoute,
@@ -276,3 +255,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
