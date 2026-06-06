@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedTeamsRouteImport } from './routes/_authenticated/teams'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedContributionsRouteImport } from './routes/_authenticated/contributions'
 import { Route as AuthenticatedChecklistRouteImport } from './routes/_authenticated/checklist'
 import { Route as AuthenticatedBudgetRouteImport } from './routes/_authenticated/budget'
 
@@ -41,6 +42,12 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedContributionsRoute =
+  AuthenticatedContributionsRouteImport.update({
+    id: '/contributions',
+    path: '/contributions',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedChecklistRoute = AuthenticatedChecklistRouteImport.update({
   id: '/checklist',
   path: '/checklist',
@@ -57,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/budget': typeof AuthenticatedBudgetRoute
   '/checklist': typeof AuthenticatedChecklistRoute
+  '/contributions': typeof AuthenticatedContributionsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/teams': typeof AuthenticatedTeamsRoute
 }
@@ -65,6 +73,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/budget': typeof AuthenticatedBudgetRoute
   '/checklist': typeof AuthenticatedChecklistRoute
+  '/contributions': typeof AuthenticatedContributionsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/teams': typeof AuthenticatedTeamsRoute
 }
@@ -75,14 +84,29 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/budget': typeof AuthenticatedBudgetRoute
   '/_authenticated/checklist': typeof AuthenticatedChecklistRoute
+  '/_authenticated/contributions': typeof AuthenticatedContributionsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/teams': typeof AuthenticatedTeamsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/budget' | '/checklist' | '/dashboard' | '/teams'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/budget'
+    | '/checklist'
+    | '/contributions'
+    | '/dashboard'
+    | '/teams'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/budget' | '/checklist' | '/dashboard' | '/teams'
+  to:
+    | '/'
+    | '/auth'
+    | '/budget'
+    | '/checklist'
+    | '/contributions'
+    | '/dashboard'
+    | '/teams'
   id:
     | '__root__'
     | '/'
@@ -90,6 +114,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/budget'
     | '/_authenticated/checklist'
+    | '/_authenticated/contributions'
     | '/_authenticated/dashboard'
     | '/_authenticated/teams'
   fileRoutesById: FileRoutesById
@@ -137,6 +162,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/contributions': {
+      id: '/_authenticated/contributions'
+      path: '/contributions'
+      fullPath: '/contributions'
+      preLoaderRoute: typeof AuthenticatedContributionsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/checklist': {
       id: '/_authenticated/checklist'
       path: '/checklist'
@@ -157,6 +189,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedBudgetRoute: typeof AuthenticatedBudgetRoute
   AuthenticatedChecklistRoute: typeof AuthenticatedChecklistRoute
+  AuthenticatedContributionsRoute: typeof AuthenticatedContributionsRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedTeamsRoute: typeof AuthenticatedTeamsRoute
 }
@@ -164,6 +197,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBudgetRoute: AuthenticatedBudgetRoute,
   AuthenticatedChecklistRoute: AuthenticatedChecklistRoute,
+  AuthenticatedContributionsRoute: AuthenticatedContributionsRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedTeamsRoute: AuthenticatedTeamsRoute,
 }
