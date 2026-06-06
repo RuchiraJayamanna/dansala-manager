@@ -7,83 +7,130 @@ import { FileSpreadsheet, FileText } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { lkr } from "@/lib/format";
 import { exportXlsx, exportPdf } from "@/lib/export";
+import { useCurrentEvent, useCurrentEventId } from "@/lib/event-context";
 
 export const Route = createFileRoute("/_authenticated/summary")({
-  head: () => ({ meta: [{ title: "Summary — Dansala Manager" }] }),
+  head: () => ({ meta: [{ title: "Summary — Dansala Management System" }] }),
   component: SummaryPage,
 });
 
 function SummaryPage() {
-  const { data: budget = [] } = useQuery({ queryKey: ["sum_budget"], queryFn: async () => (await supabase.from("budget_items").select("*").order("sort_order")).data ?? [] });
-  const { data: members = [] } = useQuery({ queryKey: ["sum_members"], queryFn: async () => (await supabase.from("team_members").select("*")).data ?? [] });
-  const { data: tasks = [] } = useQuery({ queryKey: ["sum_tasks"], queryFn: async () => (await supabase.from("checklist_items").select("*")).data ?? [] });
-  const { data: contrib = [] } = useQuery({ queryKey: ["sum_contrib"], queryFn: async () => (await supabase.from("contributions").select("*")).data ?? [] });
+  const event = useCurrentEvent();
+  const id = useCurrentEventId();
+  const { data: budget = [] } = useQuery({ queryKey: ["sum_budget", id], enabled: !!id, queryFn: async () => (await supabase.from("budget_items").select("*").eq("event_id", id!).order("category").order("sort_order")).data ?? [] });
+  const { data: members = [] } = useQuery({ queryKey: ["sum_members", id], enabled: !!id, queryFn: async () => (await supabase.from("team_members").select("*").eq("event_id", id!)).data ?? [] });
+  const { data: tasks = [] } = useQuery({ queryKey: ["sum_tasks", id], enabled: !!id, queryFn: async () => (await supabase.from("checklist_items").select("*").eq("event_id", id!)).data ?? [] });
+  const { data: contrib = [] } = useQuery({ queryKey: ["sum_contrib", id], enabled: !!id, queryFn: async () => (await supabase.from("contributions").select("*").eq("event_id", id!)).data ?? [] });
+  const { data: agenda = [] } = useQuery({ queryKey: ["sum_agenda", id], enabled: !!id, queryFn: async () => (await supabase.from("agenda_items").select("*").eq("event_id", id!).order("start_time")).data ?? [] });
+  const { data: staff = [] } = useQuery({ queryKey: ["staff_list"], queryFn: async () => (await supabase.from("staff").select("id,name").eq("active", true)).data ?? [] });
+  const staffMap = new Map((staff as any[]).map(s => [s.id, s.name]));
 
   const planned = budget.reduce((s, i: any) => s + Number(i.planned_amount || 0), 0);
   const actual = budget.reduce((s, i: any) => s + Number(i.actual_amount || 0), 0);
-
   const byCat = budget.reduce((acc: Record<string, { p: number; a: number }>, i: any) => {
     const c = i.category || "General";
     acc[c] ??= { p: 0, a: 0 };
-    acc[c].p += Number(i.planned_amount || 0);
-    acc[c].a += Number(i.actual_amount || 0);
+    acc[c].p += Number(i.planned_amount || 0); acc[c].a += Number(i.actual_amount || 0);
     return acc;
   }, {});
-
   const collected = contrib.filter((c: any) => c.status === "Paid" || c.status === "Completed").reduce((s, c: any) => s + Number(c.amount || 0), 0);
   const pendingC = contrib.filter((c: any) => !["Paid", "Completed"].includes(c.status)).reduce((s, c: any) => s + Number(c.amount || 0), 0);
-
   const doneTasks = tasks.filter((t: any) => t.status === "Done").length;
 
-  const exportAllXlsx = () => {
-    const budgetRows: any[][] = [
-      ["MISL Dansala 2026 — Budget Summary"], [`Planned: ${lkr(planned)}    Actual: ${lkr(actual)}    Variance: ${lkr(planned - actual)}`], [],
-      ["Category", "Item", "Planned (Rs.)", "Actual note", "Actual (Rs.)", "Variance (Rs.)"],
-      ...budget.map((i: any) => [i.category, i.item, Number(i.planned_amount), i.actual_note ?? "", Number(i.actual_amount), Number(i.planned_amount) - Number(i.actual_amount)]),
-      [], ["TOTALS", "", planned, "", actual, planned - actual],
-    ];
-    const catRows = [["Category", "Planned", "Actual", "Variance"], ...Object.entries(byCat).map(([c, v]) => [c, v.p, v.a, v.p - v.a])];
-    const memberRows = [["Name", "Department", "Phase", "Team", "Role", "Contact", "Attended"],
-      ...members.map((m: any) => [m.name, m.department, m.phase, m.team_name, m.role, m.contact, m.attended ? "Yes" : "No"])];
-    const taskRows = [["Title", "Owner", "Status", "Due", "Notes"],
-      ...tasks.map((t: any) => [t.title, t.owner, t.status, t.due_date, t.notes])];
-    const contribRows = [["Member", "Team", "Amount", "Status", "Paid on", "Note"],
-      ...contrib.map((c: any) => [c.member_name, c.team, Number(c.amount), c.status, c.paid_at, c.note]),
-      [], ["Collected", "", collected], ["Pending", "", pendingC]];
-    exportXlsx("MISL_Dansala_2026_Summary", [
-      { name: "Budget", rows: budgetRows },
-      { name: "Budget by Category", rows: catRows },
-      { name: "Members", rows: memberRows },
-      { name: "Tasks", rows: taskRows },
-      { name: "Contributions", rows: contribRows },
-    ]);
+  const fileBase = (event?.name ?? "Event").replace(/\s+/g, "_");
+
+  const exportBudgetEst = (kind: "xlsx" | "pdf") => {
+    if (kind === "xlsx") {
+      exportXlsx(`${fileBase}_Budget_Estimation`, [{ name: "Estimation", rows: [
+        [`${event?.name} — Budget Estimation`], [`Generated ${new Date().toLocaleString()}`], [],
+        ["Category", "Item", "Qty", "Unit", "Rate (Rs.)", "Estimated (Rs.)"],
+        ...budget.map((i: any) => [i.category, i.item, i.planned_qty ?? "", i.unit ?? "", i.planned_unit_price ?? "", Number(i.planned_amount)]),
+        [], ["TOTAL ESTIMATED", "", "", "", "", planned],
+      ]}]);
+    } else {
+      exportPdf(`${fileBase}_Budget_Estimation`, `${event?.name} — Budget Estimation`, [{
+        head: ["Category", "Item", "Qty", "Unit", "Rate", "Estimated"],
+        body: budget.map((i: any) => [i.category, i.item, i.planned_qty ?? "—", i.unit ?? "—", i.planned_unit_price ? lkr(Number(i.planned_unit_price)) : "—", lkr(Number(i.planned_amount))]),
+        foot: [["", "", "", "", "TOTAL", lkr(planned)]],
+      }], `Estimated total: ${lkr(planned)}`);
+    }
   };
 
-  const exportAllPdf = () => {
-    exportPdf("MISL_Dansala_2026_Summary", "MISL Dansala 2026 — Event Summary", [
-      { title: "Budget by Category", head: ["Category", "Planned (Rs.)", "Actual (Rs.)", "Variance (Rs.)"],
-        body: Object.entries(byCat).map(([c, v]) => [c, lkr(v.p), lkr(v.a), lkr(v.p - v.a)]),
-        foot: [["TOTAL", lkr(planned), lkr(actual), lkr(planned - actual)]] },
-      { title: "Operations Checklist", head: ["Task", "Owner", "Status", "Due"],
-        body: tasks.map((t: any) => [t.title, t.owner ?? "—", t.status, t.due_date ?? "—"]) },
-      { title: "Contributions", head: ["Member", "Team", "Amount", "Status"],
-        body: contrib.map((c: any) => [c.member_name, c.team, lkr(Number(c.amount)), c.status]),
-        foot: [["", "Collected", lkr(collected), `Pending ${lkr(pendingC)}`]] },
-    ], `Generated for the IT-managed Dansala event · ${members.length} members · ${tasks.length} tasks`);
+  const exportBudgetFull = (kind: "xlsx" | "pdf") => {
+    if (kind === "xlsx") {
+      exportXlsx(`${fileBase}_Budget_Full`, [
+        { name: "Summary", rows: [[`${event?.name} — Budget Summary`], [`Planned ${lkr(planned)} · Actual ${lkr(actual)} · Variance ${lkr(planned - actual)}`], [],
+          ["Category", "Planned", "Actual", "Variance"], ...Object.entries(byCat).map(([c, v]) => [c, v.p, v.a, v.p - v.a]), [], ["TOTAL", planned, actual, planned - actual]] },
+        { name: "All items", rows: [["Category", "Item", "Qty", "Unit", "Rate", "Planned", "Actual qty", "Actual rate", "Actual", "Variance"],
+          ...budget.map((i: any) => [i.category, i.item, i.planned_qty ?? "", i.unit ?? "", i.planned_unit_price ?? "", Number(i.planned_amount), i.actual_qty ?? "", i.actual_unit_price ?? "", Number(i.actual_amount), Number(i.planned_amount) - Number(i.actual_amount)])] },
+      ]);
+    } else {
+      exportPdf(`${fileBase}_Budget_Full`, `${event?.name} — Budget Report`, [
+        { title: "Summary by Category", head: ["Category", "Planned", "Actual", "Variance"],
+          body: Object.entries(byCat).map(([c, v]) => [c, lkr(v.p), lkr(v.a), lkr(v.p - v.a)]),
+          foot: [["TOTAL", lkr(planned), lkr(actual), lkr(planned - actual)]] },
+        { title: "All line items", head: ["Category", "Item", "Planned", "Actual"],
+          body: budget.map((i: any) => [i.category, i.item, lkr(Number(i.planned_amount)), lkr(Number(i.actual_amount))]) },
+      ], `Planned ${lkr(planned)} · Actual ${lkr(actual)} · Variance ${lkr(planned - actual)}`);
+    }
   };
+
+  const exportComplete = (kind: "xlsx" | "pdf") => {
+    const ownerName = (t: any) => t.owner_staff_id ? (staffMap.get(t.owner_staff_id) ?? t.owner ?? "—") : (t.owner ?? "—");
+    const memberName = (m: any) => m.staff_id ? (staffMap.get(m.staff_id) ?? m.name) : m.name;
+    const contribName = (c: any) => c.staff_id ? (staffMap.get(c.staff_id) ?? c.member_name) : c.member_name;
+    const agendaResp = (a: any) => a.responsible_staff_id ? (staffMap.get(a.responsible_staff_id) ?? "—") : "—";
+    if (kind === "xlsx") {
+      exportXlsx(`${fileBase}_Complete_Summary`, [
+        { name: "Event Info", rows: [["Event"], ["Name", event?.name ?? ""], ["Year", event?.year ?? ""], ["Location", event?.location ?? ""], ["Type", event?.dansala_type ?? ""], ["Date", event?.event_date ?? ""], ["Status", event?.status ?? ""]] },
+        { name: "Budget Summary", rows: [["Category", "Planned", "Actual", "Variance"], ...Object.entries(byCat).map(([c, v]) => [c, v.p, v.a, v.p - v.a]), [], ["TOTAL", planned, actual, planned - actual]] },
+        { name: "Budget Detail", rows: [["Category", "Item", "Qty", "Unit", "Rate", "Planned", "Actual", "Note"],
+          ...budget.map((i: any) => [i.category, i.item, i.planned_qty ?? "", i.unit ?? "", i.planned_unit_price ?? "", Number(i.planned_amount), Number(i.actual_amount), i.actual_note ?? ""])] },
+        { name: "Agenda", rows: [["Start", "End", "Activity", "Location", "Responsible", "Notes"],
+          ...agenda.map((a: any) => [a.start_time ?? "", a.end_time ?? "", a.title, a.location ?? "", agendaResp(a), a.notes ?? ""])] },
+        { name: "Teams", rows: [["Name", "Department", "Phase", "Team", "Role", "Attended"],
+          ...members.map((m: any) => [memberName(m), m.department, m.phase, m.team_name, m.role, m.attended ? "Yes" : "No"])] },
+        { name: "Checklist", rows: [["Task", "Owner", "Status", "Due", "Notes"],
+          ...tasks.map((t: any) => [t.title, ownerName(t), t.status, t.due_date, t.notes])] },
+        { name: "Contributions", rows: [["Member", "Team", "Amount", "Status", "Paid on", "Note"],
+          ...contrib.map((c: any) => [contribName(c), c.team, Number(c.amount), c.status, c.paid_at, c.note]),
+          [], ["Collected", "", collected], ["Pending", "", pendingC]] },
+      ]);
+    } else {
+      exportPdf(`${fileBase}_Complete_Summary`, `${event?.name} — Complete Summary`, [
+        { title: "Budget by Category", head: ["Category", "Planned", "Actual", "Variance"],
+          body: Object.entries(byCat).map(([c, v]) => [c, lkr(v.p), lkr(v.a), lkr(v.p - v.a)]),
+          foot: [["TOTAL", lkr(planned), lkr(actual), lkr(planned - actual)]] },
+        { title: "Event Agenda", head: ["Start", "End", "Activity", "Location", "Responsible"],
+          body: agenda.map((a: any) => [a.start_time ?? "—", a.end_time ?? "—", a.title, a.location ?? "—", agendaResp(a)]) },
+        { title: "Checklist", head: ["Task", "Owner", "Status", "Due"],
+          body: tasks.map((t: any) => [t.title, ownerName(t), t.status, t.due_date ?? "—"]) },
+        { title: "Contributions", head: ["Member", "Team", "Amount", "Status"],
+          body: contrib.map((c: any) => [contribName(c), c.team, lkr(Number(c.amount)), c.status]),
+          foot: [["", "Collected", lkr(collected), `Pending ${lkr(pendingC)}`]] },
+      ], `${members.length} members · ${tasks.length} tasks · ${agenda.length} agenda items`);
+    }
+  };
+
+  if (!event) return <div className="p-8 text-muted-foreground">Select an event first.</div>;
 
   return (
     <div className="p-8 space-y-6 max-w-7xl">
-      <PageHeader title="Summary & Reports" subtitle="High-level view of the entire event, with exports"
-        action={<div className="flex gap-2">
-          <Button variant="outline" onClick={exportAllXlsx}><FileSpreadsheet className="h-4 w-4 mr-2" />Export Excel</Button>
-          <Button variant="outline" onClick={exportAllPdf}><FileText className="h-4 w-4 mr-2" />Export PDF</Button>
-        </div>} />
+      <PageHeader title="Summary & Reports" subtitle={`${event.name} · ${event.year} · choose what to export`} />
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <ReportCard title="Budget Estimation" description="Planned line items with quantity, rate, and totals — share before purchasing."
+          onXlsx={() => exportBudgetEst("xlsx")} onPdf={() => exportBudgetEst("pdf")} />
+        <ReportCard title="Full Budget Report" description="Planned vs actual with variance by category and per-item detail."
+          onXlsx={() => exportBudgetFull("xlsx")} onPdf={() => exportBudgetFull("pdf")} />
+        <ReportCard title="Complete Event Summary" description="Everything: event info, budget, agenda, teams, checklist and contributions."
+          onXlsx={() => exportComplete("xlsx")} onPdf={() => exportComplete("pdf")} />
+      </div>
 
       <div className="grid gap-3 md:grid-cols-4">
         <Stat label="Planned budget" value={lkr(planned)} />
         <Stat label="Actual spend" value={lkr(actual)} tone={actual > planned ? "neg" : "pos"} />
-        <Stat label="Contributions collected" value={lkr(collected)} tone="pos" />
+        <Stat label="Collected" value={lkr(collected)} tone="pos" />
         <Stat label="Tasks done" value={`${doneTasks} / ${tasks.length}`} />
       </div>
 
@@ -105,26 +152,22 @@ function SummaryPage() {
           </div>
         </CardContent>
       </Card>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader><CardTitle className="text-base">Members per phase</CardTitle></CardHeader>
-          <CardContent className="text-sm space-y-1">
-            {Object.entries(members.reduce((a: Record<string, number>, m: any) => { a[m.phase] = (a[m.phase] || 0) + 1; return a; }, {})).map(([k, v]) => (
-              <div key={k} className="flex justify-between border-b py-1.5 last:border-0"><span>{k}</span><span className="font-medium">{String(v)}</span></div>
-            ))}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle className="text-base">Tasks by status</CardTitle></CardHeader>
-          <CardContent className="text-sm space-y-1">
-            {Object.entries(tasks.reduce((a: Record<string, number>, t: any) => { a[t.status] = (a[t.status] || 0) + 1; return a; }, {})).map(([k, v]) => (
-              <div key={k} className="flex justify-between border-b py-1.5 last:border-0"><span>{k}</span><span className="font-medium">{String(v)}</span></div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
     </div>
+  );
+}
+
+function ReportCard({ title, description, onXlsx, onPdf }: { title: string; description: string; onXlsx: () => void; onPdf: () => void }) {
+  return (
+    <Card>
+      <CardHeader><CardTitle className="text-base">{title}</CardTitle></CardHeader>
+      <CardContent>
+        <p className="text-sm text-muted-foreground mb-4">{description}</p>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={onXlsx}><FileSpreadsheet className="h-4 w-4 mr-2" />Excel</Button>
+          <Button variant="outline" size="sm" onClick={onPdf}><FileText className="h-4 w-4 mr-2" />PDF</Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

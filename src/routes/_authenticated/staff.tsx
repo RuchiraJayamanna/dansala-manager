@@ -14,9 +14,10 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { useMasterOptions } from "@/lib/master";
 import { exportXlsx, exportPdf } from "@/lib/export";
+import { useIsAdmin } from "@/lib/use-is-admin";
 
 export const Route = createFileRoute("/_authenticated/staff")({
-  head: () => ({ meta: [{ title: "Staff — Dansala Manager" }] }),
+  head: () => ({ meta: [{ title: "Staff — Dansala Management System" }] }),
   component: StaffPage,
 });
 
@@ -24,15 +25,13 @@ type S = { id: string; name: string; employee_no: string | null; department: str
 
 function StaffPage() {
   const qc = useQueryClient();
+  const { isAdmin } = useIsAdmin();
   const { data: depts = [] } = useMasterOptions("department");
+  const { data: designations = [] } = useMasterOptions("designation");
 
   const { data: rows = [] } = useQuery({
     queryKey: ["staff"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("staff").select("*").order("name");
-      if (error) throw error;
-      return data as S[];
-    },
+    queryFn: async () => (await supabase.from("staff").select("*").order("name")).data as S[] ?? [],
   });
 
   const [open, setOpen] = useState(false);
@@ -44,11 +43,11 @@ function StaffPage() {
         const { error } = await supabase.from("staff").update(v).eq("id", editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("staff").insert({ name: v.name || "", employee_no: v.employee_no, department: v.department, designation: v.designation, contact: v.contact, email: v.email, active: v.active ?? true });
+        const { error } = await supabase.from("staff").insert({ name: v.name || "", employee_no: v.employee_no, department: v.department, designation: v.designation, contact: v.contact, email: v.email, active: true });
         if (error) throw error;
       }
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["staff"] }); setOpen(false); setEditing(null); toast.success("Saved"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["staff"] }); qc.invalidateQueries({ queryKey: ["staff_list"] }); setOpen(false); setEditing(null); toast.success("Saved"); },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -59,12 +58,12 @@ function StaffPage() {
   });
 
   const handleXlsx = () => {
-    const head = ["Name", "Employee No", "Department", "Designation", "Contact", "Email", "Active"];
-    const body = rows.map(r => [r.name, r.employee_no, r.department, r.designation, r.contact, r.email, r.active ? "Yes" : "No"]);
-    exportXlsx("MISL_Staff", [{ name: "Staff", rows: [["MISL Dansala — Staff Master"], [`Total ${rows.length}`], [], head, ...body] }]);
+    exportXlsx("Staff_Master", [{ name: "Staff", rows: [["Staff Master"], [`Total ${rows.length}`], [],
+      ["Name", "Employee No", "Department", "Designation", "Contact", "Email"],
+      ...rows.map(r => [r.name, r.employee_no, r.department, r.designation, r.contact, r.email])]}]);
   };
   const handlePdf = () => {
-    exportPdf("MISL_Staff", "MISL Dansala — Staff Master", [{
+    exportPdf("Staff_Master", "Staff Master", [{
       head: ["Name", "Emp No", "Dept", "Designation", "Contact", "Email"],
       body: rows.map(r => [r.name, r.employee_no ?? "—", r.department ?? "—", r.designation ?? "—", r.contact ?? "—", r.email ?? "—"]),
     }], `Total ${rows.length} staff members`);
@@ -72,15 +71,17 @@ function StaffPage() {
 
   return (
     <div className="p-8 space-y-6 max-w-7xl">
-      <PageHeader title="Staff Master" subtitle="Single source of truth for all members"
+      <PageHeader title="Staff" subtitle="Central staff master — used across all events. Renaming here propagates everywhere."
         action={
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleXlsx}><FileSpreadsheet className="h-4 w-4 mr-2" />Excel</Button>
             <Button variant="outline" onClick={handlePdf}><FileText className="h-4 w-4 mr-2" />PDF</Button>
-            <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
-              <DialogTrigger asChild><Button onClick={() => setEditing(null)}><Plus className="h-4 w-4 mr-2" />Add staff</Button></DialogTrigger>
-              <StaffDialog initial={editing} departments={depts.map(d => d.value)} onSubmit={(v) => save.mutate(v)} />
-            </Dialog>
+            {isAdmin && (
+              <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
+                <DialogTrigger asChild><Button onClick={() => setEditing(null)}><Plus className="h-4 w-4 mr-2" />Add staff</Button></DialogTrigger>
+                <StaffDialog initial={editing} departments={depts.map(d => d.value)} designations={designations.map(d => d.value)} onSubmit={(v) => save.mutate(v)} />
+              </Dialog>
+            )}
           </div>
         } />
 
@@ -90,7 +91,7 @@ function StaffPage() {
             <TableHeader><TableRow>
               <TableHead>Name</TableHead><TableHead>Emp No</TableHead><TableHead>Department</TableHead>
               <TableHead>Designation</TableHead><TableHead>Contact</TableHead><TableHead>Email</TableHead>
-              <TableHead className="w-24"></TableHead>
+              {isAdmin && <TableHead className="w-24"></TableHead>}
             </TableRow></TableHeader>
             <TableBody>
               {rows.map(r => (
@@ -101,13 +102,13 @@ function StaffPage() {
                   <TableCell>{r.designation ?? "—"}</TableCell>
                   <TableCell>{r.contact ?? "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{r.email ?? "—"}</TableCell>
-                  <TableCell className="text-right">
+                  {isAdmin && <TableCell className="text-right">
                     <Button size="icon" variant="ghost" onClick={() => { setEditing(r); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" onClick={() => del.mutate(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                  </TableCell>
+                  </TableCell>}
                 </TableRow>
               ))}
-              {rows.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No staff yet. Add your first member.</TableCell></TableRow>}
+              {rows.length === 0 && <TableRow><TableCell colSpan={isAdmin ? 7 : 6} className="text-center text-muted-foreground py-8">No staff yet.</TableCell></TableRow>}
             </TableBody>
           </Table>
         </CardContent>
@@ -116,8 +117,8 @@ function StaffPage() {
   );
 }
 
-function StaffDialog({ initial, departments, onSubmit }: { initial: S | null; departments: string[]; onSubmit: (v: Partial<S>) => void }) {
-  const [f, setF] = useState<Partial<S>>(initial ?? { name: "", employee_no: "", department: "", designation: "", contact: "", email: "", active: true });
+function StaffDialog({ initial, departments, designations, onSubmit }: { initial: S | null; departments: string[]; designations: string[]; onSubmit: (v: Partial<S>) => void }) {
+  const [f, setF] = useState<Partial<S>>(initial ?? { name: "", employee_no: "", department: "", designation: "", contact: "", email: "" });
   return (
     <DialogContent>
       <DialogHeader><DialogTitle>{initial ? "Edit" : "Add"} staff</DialogTitle></DialogHeader>
@@ -131,7 +132,12 @@ function StaffDialog({ initial, departments, onSubmit }: { initial: S | null; de
               <SelectContent>{departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <div><Label>Designation</Label><Input value={f.designation ?? ""} onChange={e => setF({ ...f, designation: e.target.value })} /></div>
+          <div><Label>Designation</Label>
+            <Select value={f.designation ?? ""} onValueChange={v => setF({ ...f, designation: v })}>
+              <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+              <SelectContent>{designations.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
           <div><Label>Contact</Label><Input value={f.contact ?? ""} onChange={e => setF({ ...f, contact: e.target.value })} /></div>
           <div><Label>Email</Label><Input type="email" value={f.email ?? ""} onChange={e => setF({ ...f, email: e.target.value })} /></div>
         </div>

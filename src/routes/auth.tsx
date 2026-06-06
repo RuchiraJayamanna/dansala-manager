@@ -16,7 +16,6 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -25,15 +24,12 @@ function AuthPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const fn = mode === "signin"
-        ? supabase.auth.signInWithPassword({ email, password })
-        : supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}/dashboard` } });
-      const { error } = await fn;
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      toast.success(mode === "signin" ? "Welcome back" : "Account created");
+      toast.success("Welcome back");
       navigate({ to: "/dashboard", replace: true });
     } catch (e: any) {
-      toast.error(e.message ?? "Something went wrong");
+      toast.error(e.message ?? "Sign in failed");
     } finally { setLoading(false); }
   };
 
@@ -44,8 +40,8 @@ function AuthPage() {
           <div className="mx-auto h-14 w-14 rounded-2xl bg-primary text-primary-foreground grid place-items-center">
             <Utensils className="h-7 w-7" />
           </div>
-          <CardTitle className="text-2xl">MISL Dansala Manager</CardTitle>
-          <p className="text-sm text-muted-foreground">Admin sign-in to manage the Dansala 2026 event</p>
+          <CardTitle className="text-2xl">Admin Sign-in</CardTitle>
+          <p className="text-sm text-muted-foreground">Dansala Management System · administrators only</p>
         </CardHeader>
         <CardContent>
           <form onSubmit={submit} className="space-y-4">
@@ -58,11 +54,9 @@ function AuthPage() {
               <Input id="password" type="password" required minLength={6} value={password} onChange={e => setPassword(e.target.value)} />
             </div>
             <Button className="w-full" type="submit" disabled={loading}>
-              {loading ? "Please wait…" : mode === "signin" ? "Sign in" : "Create admin account"}
+              {loading ? "Please wait…" : "Sign in"}
             </Button>
-            <button type="button" onClick={() => setMode(mode === "signin" ? "signup" : "signin")} className="w-full text-sm text-muted-foreground hover:text-foreground">
-              {mode === "signin" ? "First time? Create an admin account" : "Already have an account? Sign in"}
-            </button>
+            <p className="text-xs text-muted-foreground text-center">Public users can browse the site read-only without signing in.</p>
           </form>
         </CardContent>
       </Card>

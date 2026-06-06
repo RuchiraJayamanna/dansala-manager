@@ -14,55 +14,198 @@ export type Database = {
   }
   public: {
     Tables: {
+      agenda_items: {
+        Row: {
+          created_at: string
+          end_time: string | null
+          event_id: string
+          id: string
+          location: string | null
+          notes: string | null
+          responsible_staff_id: string | null
+          sort_order: number
+          start_time: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          end_time?: string | null
+          event_id: string
+          id?: string
+          location?: string | null
+          notes?: string | null
+          responsible_staff_id?: string | null
+          sort_order?: number
+          start_time?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          end_time?: string | null
+          event_id?: string
+          id?: string
+          location?: string | null
+          notes?: string | null
+          responsible_staff_id?: string | null
+          sort_order?: number
+          start_time?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agenda_items_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agenda_items_responsible_staff_id_fkey"
+            columns: ["responsible_staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      app_settings: {
+        Row: {
+          company_name: string
+          created_at: string
+          current_event_id: string | null
+          id: number
+          updated_at: string
+        }
+        Insert: {
+          company_name?: string
+          created_at?: string
+          current_event_id?: string | null
+          id?: number
+          updated_at?: string
+        }
+        Update: {
+          company_name?: string
+          created_at?: string
+          current_event_id?: string | null
+          id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_settings_current_event_id_fkey"
+            columns: ["current_event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       budget_items: {
         Row: {
           actual_amount: number
           actual_note: string | null
+          actual_qty: number | null
+          actual_unit_price: number | null
           category: string
           created_at: string
+          event_id: string
           id: string
           item: string
           planned_amount: number
           planned_qty: number | null
           planned_unit_price: number | null
           sort_order: number
+          unit: string | null
           updated_at: string
         }
         Insert: {
           actual_amount?: number
           actual_note?: string | null
+          actual_qty?: number | null
+          actual_unit_price?: number | null
           category?: string
           created_at?: string
+          event_id: string
           id?: string
           item: string
           planned_amount?: number
           planned_qty?: number | null
           planned_unit_price?: number | null
           sort_order?: number
+          unit?: string | null
           updated_at?: string
         }
         Update: {
           actual_amount?: number
           actual_note?: string | null
+          actual_qty?: number | null
+          actual_unit_price?: number | null
           category?: string
           created_at?: string
+          event_id?: string
           id?: string
           item?: string
           planned_amount?: number
           planned_qty?: number | null
           planned_unit_price?: number | null
           sort_order?: number
+          unit?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "budget_items_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      budget_receipts: {
+        Row: {
+          budget_item_id: string
+          file_name: string
+          file_path: string
+          id: string
+          uploaded_at: string
+        }
+        Insert: {
+          budget_item_id: string
+          file_name: string
+          file_path: string
+          id?: string
+          uploaded_at?: string
+        }
+        Update: {
+          budget_item_id?: string
+          file_name?: string
+          file_path?: string
+          id?: string
+          uploaded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budget_receipts_budget_item_id_fkey"
+            columns: ["budget_item_id"]
+            isOneToOne: false
+            referencedRelation: "budget_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       checklist_items: {
         Row: {
           created_at: string
           due_date: string | null
+          event_id: string
           id: string
           notes: string | null
           owner: string | null
+          owner_staff_id: string | null
           sort_order: number
           status: string
           title: string
@@ -71,9 +214,11 @@ export type Database = {
         Insert: {
           created_at?: string
           due_date?: string | null
+          event_id: string
           id?: string
           notes?: string | null
           owner?: string | null
+          owner_staff_id?: string | null
           sort_order?: number
           status?: string
           title: string
@@ -82,20 +227,38 @@ export type Database = {
         Update: {
           created_at?: string
           due_date?: string | null
+          event_id?: string
           id?: string
           notes?: string | null
           owner?: string | null
+          owner_staff_id?: string | null
           sort_order?: number
           status?: string
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "checklist_items_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_items_owner_staff_id_fkey"
+            columns: ["owner_staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       contributions: {
         Row: {
           amount: number
           created_at: string
+          event_id: string
           id: string
           member_name: string
           note: string | null
@@ -108,6 +271,7 @@ export type Database = {
         Insert: {
           amount?: number
           created_at?: string
+          event_id: string
           id?: string
           member_name: string
           note?: string | null
@@ -120,6 +284,7 @@ export type Database = {
         Update: {
           amount?: number
           created_at?: string
+          event_id?: string
           id?: string
           member_name?: string
           note?: string | null
@@ -131,6 +296,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "contributions_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "contributions_staff_id_fkey"
             columns: ["staff_id"]
             isOneToOne: false
@@ -138,6 +310,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      events: {
+        Row: {
+          created_at: string
+          dansala_type: string | null
+          event_date: string | null
+          id: string
+          location: string | null
+          name: string
+          notes: string | null
+          status: string
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          dansala_type?: string | null
+          event_date?: string | null
+          id?: string
+          location?: string | null
+          name: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          dansala_type?: string | null
+          event_date?: string | null
+          id?: string
+          location?: string | null
+          name?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
       }
       master_options: {
         Row: {
@@ -214,6 +425,7 @@ export type Database = {
           contact: string | null
           created_at: string
           department: string | null
+          event_id: string
           id: string
           name: string
           phase: string
@@ -227,6 +439,7 @@ export type Database = {
           contact?: string | null
           created_at?: string
           department?: string | null
+          event_id: string
           id?: string
           name: string
           phase?: string
@@ -240,6 +453,7 @@ export type Database = {
           contact?: string | null
           created_at?: string
           department?: string | null
+          event_id?: string
           id?: string
           name?: string
           phase?: string
@@ -250,6 +464,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "team_members_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "team_members_staff_id_fkey"
             columns: ["staff_id"]
             isOneToOne: false
@@ -258,15 +479,42 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -393,6 +641,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin"],
+    },
   },
 } as const

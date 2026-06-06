@@ -3,23 +3,28 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Wallet, Users, ListChecks, HandCoins, TrendingDown, TrendingUp } from "lucide-react";
+import { Wallet, Users, ListChecks, HandCoins, TrendingDown, TrendingUp, CalendarRange } from "lucide-react";
 import { lkr } from "@/lib/format";
+import { useCurrentEvent, useCurrentEventId } from "@/lib/event-context";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
-  head: () => ({ meta: [{ title: "Dashboard — Dansala Manager" }] }),
+  head: () => ({ meta: [{ title: "Dashboard — Dansala Management System" }] }),
   component: Dashboard,
 });
 
 function Dashboard() {
+  const event = useCurrentEvent();
+  const eventId = useCurrentEventId();
+
   const { data } = useQuery({
-    queryKey: ["dash"],
+    queryKey: ["dash", eventId],
+    enabled: !!eventId,
     queryFn: async () => {
       const [b, m, c, contrib] = await Promise.all([
-        supabase.from("budget_items").select("planned_amount, actual_amount"),
-        supabase.from("team_members").select("id, phase"),
-        supabase.from("checklist_items").select("status"),
-        supabase.from("contributions").select("amount, status"),
+        supabase.from("budget_items").select("planned_amount, actual_amount").eq("event_id", eventId!),
+        supabase.from("team_members").select("id, phase").eq("event_id", eventId!),
+        supabase.from("checklist_items").select("status").eq("event_id", eventId!),
+        supabase.from("contributions").select("amount, status").eq("event_id", eventId!),
       ]);
       const budget = b.data ?? [];
       const planned = budget.reduce((s, r: any) => s + Number(r.planned_amount || 0), 0);
@@ -38,10 +43,13 @@ function Dashboard() {
   const variance = (data?.planned ?? 0) - (data?.actual ?? 0);
   const overspend = variance < 0;
 
+  if (!event) return <NoEvent />;
+
   return (
     <div className="p-8 space-y-8 max-w-7xl">
       <header>
-        <h1 className="text-3xl font-bold tracking-tight">Dansala 2026 — Overview</h1>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground"><CalendarRange className="h-3.5 w-3.5" />{event.dansala_type ?? "Dansala"} · {event.location ?? "—"} · {event.event_date ?? `${event.year}`}</div>
+        <h1 className="text-3xl font-bold tracking-tight mt-1">{event.name}</h1>
         <p className="text-muted-foreground mt-1">Real-time snapshot of budget, teams, checklist and contributions.</p>
       </header>
 
@@ -80,6 +88,12 @@ function Dashboard() {
       </div>
     </div>
   );
+}
+
+function NoEvent() {
+  return <div className="p-12"><Card><CardContent className="p-12 text-center text-muted-foreground">
+    No event selected. Go to <span className="font-medium">Events / Projects</span> to create one.
+  </CardContent></Card></div>;
 }
 
 function StatCard({ icon: Icon, label, value, hint, tone }: { icon: any; label: string; value: string; hint?: string; tone?: "success" | "danger" }) {
