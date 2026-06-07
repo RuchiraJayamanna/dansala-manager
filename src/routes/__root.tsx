@@ -88,8 +88,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:site", content: "@Lovable" },
       { name: "twitter:title", content: "Dansala Event Manager" },
       { name: "twitter:description", content: "Your complete digital companion for organizing and managing dansala events." },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/028600c6-3ef2-497f-9506-d239d3ca12a1" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/028600c6-3ef2-497f-9506-d239d3ca12a1" },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/PwmJKiLs8kQZNe4iNuQuvepB95g1/social-images/social-1780821861197-dansala_manager_logo_bg_(2).webp" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/PwmJKiLs8kQZNe4iNuQuvepB95g1/social-images/social-1780821861197-dansala_manager_logo_bg_(2).webp" },
     ],
     links: [
       {
