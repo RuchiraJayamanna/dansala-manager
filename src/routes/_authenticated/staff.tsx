@@ -79,7 +79,7 @@ function StaffPage() {
             {isAdmin && (
               <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
                 <DialogTrigger asChild><Button onClick={() => setEditing(null)}><Plus className="h-4 w-4 mr-2" />Add staff</Button></DialogTrigger>
-                <StaffDialog initial={editing} departments={depts.map(d => d.value)} designations={designations.map(d => d.value)} onSubmit={(v) => save.mutate(v)} />
+                <StaffDialog key={editing?.id ?? "new"} initial={editing} departments={depts.map(d => d.value)} designations={designations.map(d => d.value)} onSubmit={(v) => save.mutate(v)} />
               </Dialog>
             )}
           </div>
