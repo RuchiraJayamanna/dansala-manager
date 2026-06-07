@@ -33,6 +33,25 @@ export const Route = createFileRoute("/_authenticated/setup/$type")({
 
 type Opt = { id: string; option_type: string; value: string; sort_order: number; active: boolean };
 
+// Where each master option type is referenced in other tables (column stores the text value).
+const CASCADE: Record<string, Array<{ table: string; column: string }>> = {
+  budget_category: [{ table: "budget_items", column: "category" }],
+  unit: [{ table: "budget_items", column: "unit" }],
+  phase: [{ table: "team_members", column: "phase" }],
+  team_group: [{ table: "team_members", column: "team_name" }],
+  member_role: [{ table: "team_members", column: "role" }],
+  department: [
+    { table: "staff", column: "department" },
+    { table: "team_members", column: "department" },
+  ],
+  designation: [{ table: "staff", column: "designation" }],
+  checklist_status: [{ table: "checklist_items", column: "status" }],
+  contribution_status: [{ table: "contributions", column: "status" }],
+  contribution_team: [{ table: "contributions", column: "team" }],
+  dansala_type: [{ table: "events", column: "dansala_type" }],
+  event_status: [{ table: "events", column: "status" }],
+};
+
 function SetupPage() {
   const { type } = useParams({ from: "/_authenticated/setup/$type" });
   const label = TYPE_LABELS[type] ?? type;
@@ -58,10 +77,29 @@ function SetupPage() {
   });
   const update = useMutation({
     mutationFn: async ({ id, value }: { id: string; value: string }) => {
+      const prev = rows.find(r => r.id === id);
       const { error } = await supabase.from("master_options").update({ value }).eq("id", id);
       if (error) throw error;
+      // Cascade: rename the same string in every referencing column
+      if (prev && prev.value !== value) {
+        for (const ref of CASCADE[type] ?? []) {
+          const { error: e2 } = await supabase
+            .from(ref.table as any)
+            .update({ [ref.column]: value } as any)
+            .eq(ref.column, prev.value);
+          if (e2) throw e2;
+        }
+      }
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["setup", type] }); qc.invalidateQueries({ queryKey: ["master", type] }); setEditId(null); toast.success("Updated"); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["setup", type] });
+      qc.invalidateQueries({ queryKey: ["master", type] });
+      // Refresh dependent data caches
+      qc.invalidateQueries();
+      setEditId(null);
+      toast.success("Updated everywhere");
+    },
+    onError: (e: any) => toast.error(e.message),
   });
   const del = useMutation({
     mutationFn: async (id: string) => { const { error } = await supabase.from("master_options").delete().eq("id", id); if (error) throw error; },
