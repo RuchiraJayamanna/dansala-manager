@@ -175,7 +175,7 @@ function BudgetPage() {
             {isAdmin && (
               <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
                 <DialogTrigger asChild><Button onClick={() => setEditing(null)}><Plus className="h-4 w-4 mr-2" />Add item</Button></DialogTrigger>
-                <ItemDialog initial={editing} categories={CATEGORIES} units={UNITS} onSubmit={(v) => save.mutate(v)} />
+                <ItemDialog key={editing?.id ?? "new"} initial={editing} categories={CATEGORIES} units={UNITS} onSubmit={(v) => save.mutate(v)} />
               </Dialog>
             )}
           </div>
