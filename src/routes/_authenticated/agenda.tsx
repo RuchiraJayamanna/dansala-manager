@@ -84,7 +84,7 @@ function AgendaPage() {
             {isAdmin && (
               <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
                 <DialogTrigger asChild><Button onClick={() => setEditing(null)}><Plus className="h-4 w-4 mr-2" />Add activity</Button></DialogTrigger>
-                <AgendaDialog initial={editing} staff={staff} onSubmit={(v) => save.mutate(v)} />
+                <AgendaDialog key={editing?.id ?? "new"} initial={editing} staff={staff} onSubmit={(v) => save.mutate(v)} />
               </Dialog>
             )}
           </div>
