@@ -55,7 +55,7 @@ function EventsPage() {
         action={isAdmin && (
           <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
             <DialogTrigger asChild><Button onClick={() => setEditing(null)}><Plus className="h-4 w-4 mr-2" />New event</Button></DialogTrigger>
-            <EventDialog initial={editing} types={types.map(t => t.value)} statuses={statuses.map(s => s.value)} onSubmit={(v) => save.mutate(v)} />
+            <EventDialog key={editing?.id ?? "new"} initial={editing} types={types.map(t => t.value)} statuses={statuses.map(s => s.value)} onSubmit={(v) => save.mutate(v)} />
           </Dialog>
         )} />
 
