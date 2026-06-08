@@ -2,12 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { BulletNotes } from "@/components/BulletNotes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, FileSpreadsheet, FileText, AlertCircle } from "lucide-react";
+import { Plus, Trash2, FileSpreadsheet, FileText, AlertCircle, StickyNote, Save } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
@@ -38,6 +40,17 @@ function ChecklistPage() {
   const { isAdmin } = useIsAdmin();
   const { data: statusOpts = [] } = useMasterOptions("checklist_status");
   const STATUSES = statusOpts.length ? statusOpts.map(s => s.value) : ["Pending", "In Progress", "Done", "Blocked"];
+
+  const [notesDraft, setNotesDraft] = useState<string | null>(null);
+  const notesValue = notesDraft ?? event?.checklist_notes ?? "";
+  const saveNotes = useMutation({
+    mutationFn: async (val: string) => {
+      const { error } = await supabase.from("events").update({ checklist_notes: val } as any).eq("id", eventId!);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["events"] }); setNotesDraft(null); toast.success("Notes saved"); },
+    onError: (e: any) => toast.error(e.message),
+  });
 
   const { data: staff = [] } = useQuery({
     queryKey: ["staff_list"],
@@ -110,6 +123,30 @@ function ChecklistPage() {
             )}
           </div>
         } />
+
+      <Card className="border-amber-300/50 bg-amber-50/40 dark:bg-amber-950/10">
+        <CardContent className="p-4 space-y-2">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <StickyNote className="h-4 w-4 text-amber-600" /> Important notes
+          </div>
+          {isAdmin ? (
+            <>
+              <Textarea rows={4} value={notesValue}
+                placeholder={"One point per line — each line becomes a bullet.\nE.g.\nCheck all generators by 9am\nConfirm vendor deliveries the night before"}
+                onChange={e => setNotesDraft(e.target.value)} />
+              <p className="text-xs text-muted-foreground">Tip: Enter each important point on a new line.</p>
+              <div className="flex justify-end gap-2">
+                {notesDraft !== null && <Button size="sm" variant="ghost" onClick={() => setNotesDraft(null)}>Cancel</Button>}
+                <Button size="sm" disabled={notesDraft === null || saveNotes.isPending} onClick={() => saveNotes.mutate(notesDraft ?? "")}>
+                  <Save className="h-4 w-4 mr-2" />Save notes
+                </Button>
+              </div>
+            </>
+          ) : (
+            <BulletNotes text={event.checklist_notes ?? ""} />
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardContent className="p-0 divide-y">

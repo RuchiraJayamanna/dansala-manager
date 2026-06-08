@@ -314,6 +314,7 @@ export type Database = {
       events: {
         Row: {
           agenda_notes: string | null
+          checklist_notes: string | null
           created_at: string
           dansala_type: string | null
           event_date: string | null
@@ -322,11 +323,13 @@ export type Database = {
           name: string
           notes: string | null
           status: string
+          team_notes: Json
           updated_at: string
           year: number
         }
         Insert: {
           agenda_notes?: string | null
+          checklist_notes?: string | null
           created_at?: string
           dansala_type?: string | null
           event_date?: string | null
@@ -335,11 +338,13 @@ export type Database = {
           name: string
           notes?: string | null
           status?: string
+          team_notes?: Json
           updated_at?: string
           year: number
         }
         Update: {
           agenda_notes?: string | null
+          checklist_notes?: string | null
           created_at?: string
           dansala_type?: string | null
           event_date?: string | null
@@ -348,6 +353,7 @@ export type Database = {
           name?: string
           notes?: string | null
           status?: string
+          team_notes?: Json
           updated_at?: string
           year?: number
         }

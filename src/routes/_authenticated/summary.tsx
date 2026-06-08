@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { lkr } from "@/lib/format";
 import { exportXlsx, exportPdf } from "@/lib/export";
 import { useCurrentEvent, useCurrentEventId } from "@/lib/event-context";
+import { notesToBullets } from "@/components/BulletNotes";
 
 export const Route = createFileRoute("/_authenticated/summary")({
   head: () => ({ meta: [{ title: "Summary — Dansala Management System" }] }),
@@ -23,7 +24,26 @@ function SummaryPage() {
   const { data: contrib = [] } = useQuery({ queryKey: ["sum_contrib", id], enabled: !!id, queryFn: async () => (await supabase.from("contributions").select("*").eq("event_id", id!)).data ?? [] });
   const { data: agenda = [] } = useQuery({ queryKey: ["sum_agenda", id], enabled: !!id, queryFn: async () => (await supabase.from("agenda_items").select("*").eq("event_id", id!).order("start_time")).data ?? [] });
   const { data: staff = [] } = useQuery({ queryKey: ["staff_list"], queryFn: async () => (await supabase.from("staff").select("id,name").eq("active", true)).data ?? [] });
+  const { data: receipts = [] } = useQuery({
+    queryKey: ["sum_receipts", id],
+    enabled: !!id && budget.length > 0,
+    queryFn: async () => {
+      const ids = (budget as any[]).map(b => b.id);
+      if (!ids.length) return [] as any[];
+      const { data } = await supabase.from("budget_receipts").select("*").in("budget_item_id", ids);
+      if (!data) return [];
+      const withUrls = await Promise.all(data.map(async (r: any) => {
+        const { data: s } = await supabase.storage.from("receipts").createSignedUrl(r.file_path, 60 * 60 * 24);
+        return { ...r, url: s?.signedUrl ?? "" };
+      }));
+      return withUrls;
+    },
+  });
   const staffMap = new Map((staff as any[]).map(s => [s.id, s.name]));
+  const itemMap = new Map((budget as any[]).map(b => [b.id, b]));
+  const receiptsByItem = (receipts as any[]).reduce((acc: Record<string, any[]>, r) => {
+    (acc[r.budget_item_id] ??= []).push(r); return acc;
+  }, {});
 
   const planned = budget.reduce((s, i: any) => s + Number(i.planned_amount || 0), 0);
   const actual = budget.reduce((s, i: any) => s + Number(i.actual_amount || 0), 0);
@@ -63,6 +83,11 @@ function SummaryPage() {
           ["Category", "Planned", "Actual", "Variance"], ...Object.entries(byCat).map(([c, v]) => [c, v.p, v.a, v.p - v.a]), [], ["TOTAL", planned, actual, planned - actual]] },
         { name: "All items", rows: [["Category", "Item", "Qty", "Unit", "Rate", "Planned", "Actual qty", "Actual rate", "Actual", "Variance"],
           ...budget.map((i: any) => [i.category, i.item, i.planned_qty ?? "", i.unit ?? "", i.planned_unit_price ?? "", Number(i.planned_amount), i.actual_qty ?? "", i.actual_unit_price ?? "", Number(i.actual_amount), Number(i.planned_amount) - Number(i.actual_amount)])] },
+        { name: "Receipts", rows: [["Category", "Item", "File", "Link"],
+          ...(receipts as any[]).map(r => {
+            const it = itemMap.get(r.budget_item_id);
+            return [it?.category ?? "—", it?.item ?? "—", r.file_name, r.url];
+          })] },
       ]);
     } else {
       exportPdf(`${fileBase}_Budget_Full`, `${event?.name} — Budget Report`, [
@@ -71,6 +96,14 @@ function SummaryPage() {
           foot: [["TOTAL", lkr(planned), lkr(actual), lkr(planned - actual)]] },
         { title: "All line items", head: ["Category", "Item", "Planned", "Actual"],
           body: budget.map((i: any) => [i.category, i.item, lkr(Number(i.planned_amount)), lkr(Number(i.actual_amount))]) },
+        ...((receipts as any[]).length ? [{
+          title: "Receipts & supporting documents",
+          head: ["Category", "Item", "File", "Link"],
+          body: (receipts as any[]).map(r => {
+            const it = itemMap.get(r.budget_item_id);
+            return [it?.category ?? "—", it?.item ?? "—", r.file_name, r.url];
+          }),
+        }] : []),
       ], `Planned ${lkr(planned)} · Actual ${lkr(actual)} · Variance ${lkr(planned - actual)}`);
     }
   };
@@ -80,18 +113,30 @@ function SummaryPage() {
     const memberName = (m: any) => m.staff_id ? (staffMap.get(m.staff_id) ?? m.name) : m.name;
     const contribName = (c: any) => c.staff_id ? (staffMap.get(c.staff_id) ?? c.member_name) : c.member_name;
     const agendaResp = (a: any) => a.responsible_staff_id ? (staffMap.get(a.responsible_staff_id) ?? "—") : "—";
+    const agendaBullets = notesToBullets(event?.agenda_notes);
+    const checklistBullets = notesToBullets(event?.checklist_notes);
+    const teamNotes = (event?.team_notes ?? {}) as Record<string, string>;
+    const teamNotesRows: [string, string][] = [];
+    for (const [k, v] of Object.entries(teamNotes)) {
+      for (const b of notesToBullets(v)) teamNotesRows.push([k, b]);
+    }
     if (kind === "xlsx") {
       exportXlsx(`${fileBase}_Complete_Summary`, [
         { name: "Event Info", rows: [["Event"], ["Name", event?.name ?? ""], ["Year", event?.year ?? ""], ["Location", event?.location ?? ""], ["Type", event?.dansala_type ?? ""], ["Date", event?.event_date ?? ""], ["Status", event?.status ?? ""]] },
         { name: "Budget Summary", rows: [["Category", "Planned", "Actual", "Variance"], ...Object.entries(byCat).map(([c, v]) => [c, v.p, v.a, v.p - v.a]), [], ["TOTAL", planned, actual, planned - actual]] },
         { name: "Budget Detail", rows: [["Category", "Item", "Qty", "Unit", "Rate", "Planned", "Actual", "Note"],
           ...budget.map((i: any) => [i.category, i.item, i.planned_qty ?? "", i.unit ?? "", i.planned_unit_price ?? "", Number(i.planned_amount), Number(i.actual_amount), i.actual_note ?? ""])] },
+        { name: "Receipts", rows: [["Category", "Item", "File", "Link"],
+          ...(receipts as any[]).map(r => { const it = itemMap.get(r.budget_item_id); return [it?.category ?? "—", it?.item ?? "—", r.file_name, r.url]; })] },
         { name: "Agenda", rows: [["Start", "End", "Activity", "Location", "Responsible", "Notes"],
           ...agenda.map((a: any) => [a.start_time ?? "", a.end_time ?? "", a.title, a.location ?? "", agendaResp(a), a.notes ?? ""])] },
+        { name: "Agenda Notes", rows: [["Important notes"], ...agendaBullets.map(b => [`• ${b}`])] },
         { name: "Teams", rows: [["Name", "Department", "Phase", "Team", "Role", "Attended"],
           ...members.map((m: any) => [memberName(m), m.department, m.phase, m.team_name, m.role, m.attended ? "Yes" : "No"])] },
+        { name: "Team Notes", rows: [["Phase :: Team", "Note"], ...teamNotesRows] },
         { name: "Checklist", rows: [["Task", "Owner", "Status", "Due", "Notes"],
           ...tasks.map((t: any) => [t.title, ownerName(t), t.status, t.due_date, t.notes])] },
+        { name: "Checklist Notes", rows: [["Important notes"], ...checklistBullets.map(b => [`• ${b}`])] },
         { name: "Contributions", rows: [["Member", "Team", "Amount", "Status", "Paid on", "Note"],
           ...contrib.map((c: any) => [contribName(c), c.team, Number(c.amount), c.status, c.paid_at, c.note]),
           [], ["Collected", "", collected], ["Pending", "", pendingC]] },
@@ -101,10 +146,18 @@ function SummaryPage() {
         { title: "Budget by Category", head: ["Category", "Planned", "Actual", "Variance"],
           body: Object.entries(byCat).map(([c, v]) => [c, lkr(v.p), lkr(v.a), lkr(v.p - v.a)]),
           foot: [["TOTAL", lkr(planned), lkr(actual), lkr(planned - actual)]] },
+        ...((receipts as any[]).length ? [{
+          title: "Receipts & supporting documents",
+          head: ["Category", "Item", "File", "Link"],
+          body: (receipts as any[]).map(r => { const it = itemMap.get(r.budget_item_id); return [it?.category ?? "—", it?.item ?? "—", r.file_name, r.url]; }),
+        }] : []),
         { title: "Event Agenda", head: ["Start", "End", "Activity", "Location", "Responsible"],
           body: agenda.map((a: any) => [a.start_time ?? "—", a.end_time ?? "—", a.title, a.location ?? "—", agendaResp(a)]) },
+        ...(agendaBullets.length ? [{ title: "Agenda — Important Notes", head: ["#", "Point"], body: agendaBullets.map((b, i) => [String(i + 1), b]) }] : []),
         { title: "Checklist", head: ["Task", "Owner", "Status", "Due"],
           body: tasks.map((t: any) => [t.title, ownerName(t), t.status, t.due_date ?? "—"]) },
+        ...(checklistBullets.length ? [{ title: "Checklist — Important Notes", head: ["#", "Point"], body: checklistBullets.map((b, i) => [String(i + 1), b]) }] : []),
+        ...(teamNotesRows.length ? [{ title: "Team Notes", head: ["Phase · Team", "Note"], body: teamNotesRows.map(([k, v]) => [k.replace("::", " · "), v]) }] : []),
         { title: "Contributions", head: ["Member", "Team", "Amount", "Status"],
           body: contrib.map((c: any) => [contribName(c), c.team, lkr(Number(c.amount)), c.status]),
           foot: [["", "Collected", lkr(collected), `Pending ${lkr(pendingC)}`]] },

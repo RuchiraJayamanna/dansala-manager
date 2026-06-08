@@ -8,7 +8,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Trash2, FileSpreadsheet, FileText } from "lucide-react";
+import { Plus, Trash2, FileSpreadsheet, FileText, StickyNote, Save } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { BulletNotes } from "@/components/BulletNotes";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
@@ -92,6 +94,17 @@ function TeamsPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["members"] }),
   });
 
+  const teamNotes = (event?.team_notes ?? {}) as Record<string, string>;
+  const saveTeamNote = useMutation({
+    mutationFn: async ({ key, value }: { key: string; value: string }) => {
+      const next = { ...teamNotes, [key]: value };
+      const { error } = await supabase.from("events").update({ team_notes: next } as any).eq("id", eventId!);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["events"] }); toast.success("Notes saved"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const handleXlsx = () => {
     const sheets = PHASES.map(p => ({
       name: p.slice(0, 31),
@@ -131,6 +144,7 @@ function TeamsPage() {
           <TabsContent key={phase} value={phase} className="space-y-4 pt-4">
             <PhaseView phase={phase} members={members.filter(m => m.phase === phase)} isAdmin={isAdmin}
               displayName={displayName} displayDept={displayDept} displayContact={displayContact}
+              teamNotes={teamNotes} onSaveNote={(key, value) => saveTeamNote.mutate({ key, value })}
               onDelete={(id) => del.mutate(id)} onToggle={(id, a) => toggle.mutate({ id, attended: a })} />
           </TabsContent>
         ))}
@@ -139,9 +153,10 @@ function TeamsPage() {
   );
 }
 
-function PhaseView({ phase, members, isAdmin, displayName, displayDept, displayContact, onDelete, onToggle }: {
+function PhaseView({ phase, members, isAdmin, displayName, displayDept, displayContact, teamNotes, onSaveNote, onDelete, onToggle }: {
   phase: string; members: M[]; isAdmin: boolean;
   displayName: (m: M) => string; displayDept: (m: M) => string | null | undefined; displayContact: (m: M) => string | null | undefined;
+  teamNotes: Record<string, string>; onSaveNote: (key: string, value: string) => void;
   onDelete: (id: string) => void; onToggle: (id: string, a: boolean) => void;
 }) {
   const grouped = useMemo(() => {
@@ -154,23 +169,51 @@ function PhaseView({ phase, members, isAdmin, displayName, displayDept, displayC
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      {Object.entries(grouped).map(([team, list]) => (
-        <Card key={team}>
-          <CardHeader className="pb-3"><CardTitle className="text-base">{team} <span className="text-muted-foreground font-normal text-sm">· {list.length}</span></CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            {list.map(m => (
-              <div key={m.id} className="flex items-center gap-3 rounded-lg border p-2.5">
-                <Checkbox checked={m.attended} disabled={!isAdmin} onCheckedChange={(c) => onToggle(m.id, !!c)} />
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate">{displayName(m)} {m.role && <span className="text-xs text-muted-foreground">· {m.role}</span>}</div>
-                  <div className="text-xs text-muted-foreground">{displayDept(m)}{displayContact(m) ? ` · ${displayContact(m)}` : ""}</div>
+      {Object.entries(grouped).map(([team, list]) => {
+        const key = `${phase}::${team}`;
+        return (
+          <Card key={team}>
+            <CardHeader className="pb-3"><CardTitle className="text-base">{team} <span className="text-muted-foreground font-normal text-sm">· {list.length}</span></CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              {list.map(m => (
+                <div key={m.id} className="flex items-center gap-3 rounded-lg border p-2.5">
+                  <Checkbox checked={m.attended} disabled={!isAdmin} onCheckedChange={(c) => onToggle(m.id, !!c)} />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium truncate">{displayName(m)} {m.role && <span className="text-xs text-muted-foreground">· {m.role}</span>}</div>
+                    <div className="text-xs text-muted-foreground">{displayDept(m)}{displayContact(m) ? ` · ${displayContact(m)}` : ""}</div>
+                  </div>
+                  {isAdmin && <Button size="icon" variant="ghost" onClick={() => onDelete(m.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
                 </div>
-                {isAdmin && <Button size="icon" variant="ghost" onClick={() => onDelete(m.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      ))}
+              ))}
+              <TeamNotesBlock noteKey={key} initial={teamNotes[key] ?? ""} isAdmin={isAdmin} onSave={onSaveNote} />
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
+function TeamNotesBlock({ noteKey, initial, isAdmin, onSave }: { noteKey: string; initial: string; isAdmin: boolean; onSave: (key: string, value: string) => void }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const value = draft ?? initial;
+  return (
+    <div className="rounded-lg border border-amber-300/50 bg-amber-50/40 dark:bg-amber-950/10 p-3 space-y-2">
+      <div className="flex items-center gap-2 text-xs font-medium"><StickyNote className="h-3.5 w-3.5 text-amber-600" /> Team notes</div>
+      {isAdmin ? (
+        <>
+          <Textarea rows={3} value={value} placeholder={"One point per line — each line becomes a bullet."}
+            onChange={e => setDraft(e.target.value)} />
+          <div className="flex justify-end gap-2">
+            {draft !== null && <Button size="sm" variant="ghost" onClick={() => setDraft(null)}>Cancel</Button>}
+            <Button size="sm" disabled={draft === null} onClick={() => { onSave(noteKey, draft ?? ""); setDraft(null); }}>
+              <Save className="h-3.5 w-3.5 mr-1" />Save
+            </Button>
+          </div>
+        </>
+      ) : (
+        <BulletNotes text={initial} empty="No team notes." />
+      )}
     </div>
   );
 }
