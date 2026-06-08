@@ -8,7 +8,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Trash2, FileSpreadsheet, FileText } from "lucide-react";
+import { Plus, Trash2, FileSpreadsheet, FileText, StickyNote, Save } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { BulletNotes } from "@/components/BulletNotes";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
@@ -92,6 +94,17 @@ function TeamsPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["members"] }),
   });
 
+  const teamNotes = (event?.team_notes ?? {}) as Record<string, string>;
+  const saveTeamNote = useMutation({
+    mutationFn: async ({ key, value }: { key: string; value: string }) => {
+      const next = { ...teamNotes, [key]: value };
+      const { error } = await supabase.from("events").update({ team_notes: next } as any).eq("id", eventId!);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["events"] }); toast.success("Notes saved"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const handleXlsx = () => {
     const sheets = PHASES.map(p => ({
       name: p.slice(0, 31),
@@ -131,6 +144,7 @@ function TeamsPage() {
           <TabsContent key={phase} value={phase} className="space-y-4 pt-4">
             <PhaseView phase={phase} members={members.filter(m => m.phase === phase)} isAdmin={isAdmin}
               displayName={displayName} displayDept={displayDept} displayContact={displayContact}
+              teamNotes={teamNotes} onSaveNote={(key, value) => saveTeamNote.mutate({ key, value })}
               onDelete={(id) => del.mutate(id)} onToggle={(id, a) => toggle.mutate({ id, attended: a })} />
           </TabsContent>
         ))}
