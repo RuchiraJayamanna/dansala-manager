@@ -109,8 +109,9 @@ function AgendaPage() {
           </div>
           {isAdmin ? (
             <>
-              <Textarea rows={4} value={notesValue} placeholder="Reminders, contacts, do's and don'ts for the event day…"
+              <Textarea rows={5} value={notesValue} placeholder={"One point per line — each line becomes a bullet.\nE.g.\nKeep first-aid kit at registration desk\nFood distribution starts at 11:30\nContact: Ravi 077-1234567"}
                 onChange={e => setNotesDraft(e.target.value)} />
+              <p className="text-xs text-muted-foreground">Tip: Enter each important point on a new line — it will display as a bullet for everyone.</p>
               <div className="flex justify-end gap-2">
                 {notesDraft !== null && <Button size="sm" variant="ghost" onClick={() => setNotesDraft(null)}>Cancel</Button>}
                 <Button size="sm" disabled={notesDraft === null || saveNotes.isPending} onClick={() => saveNotes.mutate(notesDraft ?? "")}>
@@ -119,9 +120,7 @@ function AgendaPage() {
               </div>
             </>
           ) : (
-            <div className="text-sm whitespace-pre-wrap text-muted-foreground min-h-[1.5rem]">
-              {event.agenda_notes || "No notes yet."}
-            </div>
+            <BulletNotes text={event.agenda_notes ?? ""} />
           )}
         </CardContent>
       </Card>
