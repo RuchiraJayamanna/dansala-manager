@@ -75,7 +75,7 @@ function AgendaPage() {
   if (!event) return <div className="p-8 text-muted-foreground">Select an event first.</div>;
 
   return (
-    <div className="p-8 space-y-6 max-w-4xl">
+    <div className="p-4 md:p-8 space-y-6 max-w-4xl">
       <PageHeader title="Event-day Agenda" subtitle={`${event.name} · timeline of activities`}
         action={
           <div className="flex gap-2">

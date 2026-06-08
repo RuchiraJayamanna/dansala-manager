@@ -50,7 +50,7 @@ function EventsPage() {
   });
 
   return (
-    <div className="p-8 space-y-6 max-w-6xl">
+    <div className="p-4 md:p-8 space-y-6 max-w-6xl">
       <PageHeader title="Events / Projects" subtitle="Each Dansala event is a separate project with its own budget, teams and checklist."
         action={isAdmin && (
           <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>

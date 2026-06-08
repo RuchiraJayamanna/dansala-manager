@@ -107,7 +107,7 @@ function SetupPage() {
   });
 
   return (
-    <div className="p-8 space-y-6 max-w-3xl">
+    <div className="p-4 md:p-8 space-y-6 max-w-3xl">
       <PageHeader title={label} subtitle="Manage dropdown values used across the system." />
 
       {isAdmin && (
