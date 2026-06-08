@@ -12,6 +12,8 @@ export type Event = {
   status: string;
   notes: string | null;
   agenda_notes?: string | null;
+  checklist_notes?: string | null;
+  team_notes?: Record<string, string> | null;
 };
 
 type Ctx = {
