@@ -110,7 +110,7 @@ function TeamsPage() {
   if (!event) return <div className="p-8 text-muted-foreground">Select an event first.</div>;
 
   return (
-    <div className="p-8 space-y-6 max-w-7xl">
+    <div className="p-4 md:p-8 space-y-6 max-w-7xl">
       <PageHeader title="Teams & Assignments" subtitle={`${event.name} · members across phases`}
         action={
           <div className="flex gap-2">

@@ -313,6 +313,7 @@ export type Database = {
       }
       events: {
         Row: {
+          agenda_notes: string | null
           created_at: string
           dansala_type: string | null
           event_date: string | null
@@ -325,6 +326,7 @@ export type Database = {
           year: number
         }
         Insert: {
+          agenda_notes?: string | null
           created_at?: string
           dansala_type?: string | null
           event_date?: string | null
@@ -337,6 +339,7 @@ export type Database = {
           year: number
         }
         Update: {
+          agenda_notes?: string | null
           created_at?: string
           dansala_type?: string | null
           event_date?: string | null

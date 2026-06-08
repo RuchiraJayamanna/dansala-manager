@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Check } from "lucide-react";
+import { Plus, Pencil, Trash2, Check, Copy } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
@@ -49,8 +49,43 @@ function EventsPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["events"] }); toast.success("Removed"); },
   });
 
+  const duplicate = useMutation({
+    mutationFn: async (src: Event) => {
+      const newName = `${src.name} (Copy)`;
+      const { data: created, error } = await supabase.from("events").insert({
+        name: newName, year: src.year, location: src.location, dansala_type: src.dansala_type,
+        event_date: null, status: "Planning", notes: src.notes, agenda_notes: src.agenda_notes ?? null,
+      }).select().single();
+      if (error) throw error;
+      const newId = created.id as string;
+      const stripIds = (rows: any[]) => rows.map(({ id, created_at, updated_at, ...rest }) => ({ ...rest, event_id: newId }));
+
+      const [b, c, t, a] = await Promise.all([
+        supabase.from("budget_items").select("*").eq("event_id", src.id),
+        supabase.from("checklist_items").select("*").eq("event_id", src.id),
+        supabase.from("team_members").select("*").eq("event_id", src.id),
+        supabase.from("agenda_items").select("*").eq("event_id", src.id),
+      ]);
+
+      const tasks: Array<PromiseLike<{ error: any }>> = [];
+      if (b.data?.length) tasks.push(supabase.from("budget_items").insert(stripIds(b.data)) as any);
+      if (c.data?.length) tasks.push(supabase.from("checklist_items").insert(stripIds(c.data)) as any);
+      if (t.data?.length) tasks.push(supabase.from("team_members").insert(stripIds(t.data)) as any);
+      if (a.data?.length) tasks.push(supabase.from("agenda_items").insert(stripIds(a.data)) as any);
+      const results = await Promise.all(tasks);
+      for (const r of results) if (r?.error) throw r.error;
+      return newId;
+    },
+    onSuccess: (newId) => {
+      qc.invalidateQueries();
+      setCurrentEventId(newId);
+      toast.success("Event duplicated — edit the copy as needed");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   return (
-    <div className="p-8 space-y-6 max-w-6xl">
+    <div className="p-4 md:p-8 space-y-6 max-w-6xl">
       <PageHeader title="Events / Projects" subtitle="Each Dansala event is a separate project with its own budget, teams and checklist."
         action={isAdmin && (
           <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
@@ -81,6 +116,10 @@ function EventsPage() {
                   {isAdmin && (
                     <>
                       <Button size="icon" variant="ghost" onClick={() => { setEditing(e); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
+                      <Button size="icon" variant="ghost" title="Duplicate event"
+                        onClick={() => { if (confirm(`Duplicate "${e.name}" with all budget, checklist, team and agenda data?`)) duplicate.mutate(e); }}>
+                        <Copy className="h-4 w-4" />
+                      </Button>
                       <Button size="icon" variant="ghost" onClick={() => del.mutate(e.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                     </>
                   )}

@@ -96,7 +96,7 @@ function ChecklistPage() {
   if (!event) return <div className="p-8 text-muted-foreground">Select an event first.</div>;
 
   return (
-    <div className="p-8 space-y-6 max-w-5xl">
+    <div className="p-4 md:p-8 space-y-6 max-w-5xl">
       <PageHeader title="Operations checklist" subtitle={`${event.name} · ${done} of ${items.length} complete`}
         action={
           <div className="flex gap-2">

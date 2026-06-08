@@ -115,7 +115,7 @@ function SummaryPage() {
   if (!event) return <div className="p-8 text-muted-foreground">Select an event first.</div>;
 
   return (
-    <div className="p-8 space-y-6 max-w-7xl">
+    <div className="p-4 md:p-8 space-y-6 max-w-7xl">
       <PageHeader title="Summary & Reports" subtitle={`${event.name} · ${event.year} · choose what to export`} />
 
       <div className="grid gap-4 md:grid-cols-3">

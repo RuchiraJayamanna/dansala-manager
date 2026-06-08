@@ -7,13 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Pencil, Clock, MapPin, User, FileSpreadsheet, FileText } from "lucide-react";
+import { Plus, Trash2, Pencil, Clock, MapPin, User, FileSpreadsheet, FileText, StickyNote, Save } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { useCurrentEvent, useCurrentEventId } from "@/lib/event-context";
 import { useIsAdmin } from "@/lib/use-is-admin";
 import { exportXlsx, exportPdf } from "@/lib/export";
+import { Textarea } from "@/components/ui/textarea";
 
 export const Route = createFileRoute("/_authenticated/agenda")({
   head: () => ({ meta: [{ title: "Agenda — Dansala Management System" }] }),
@@ -28,6 +29,17 @@ function AgendaPage() {
   const event = useCurrentEvent();
   const eventId = useCurrentEventId();
   const { isAdmin } = useIsAdmin();
+
+  const [notesDraft, setNotesDraft] = useState<string | null>(null);
+  const notesValue = notesDraft ?? event?.agenda_notes ?? "";
+  const saveNotes = useMutation({
+    mutationFn: async (val: string) => {
+      const { error } = await supabase.from("events").update({ agenda_notes: val }).eq("id", eventId!);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["events"] }); setNotesDraft(null); toast.success("Notes saved"); },
+    onError: (e: any) => toast.error(e.message),
+  });
 
   const { data: staff = [] } = useQuery({ queryKey: ["staff_list"], queryFn: async () => (await supabase.from("staff").select("id,name").eq("active", true).order("name")).data as Staff[] ?? [] });
   const staffMap = new Map(staff.map(s => [s.id, s.name]));
@@ -75,20 +87,44 @@ function AgendaPage() {
   if (!event) return <div className="p-8 text-muted-foreground">Select an event first.</div>;
 
   return (
-    <div className="p-8 space-y-6 max-w-4xl">
+    <div className="p-4 md:p-8 space-y-6 max-w-4xl">
       <PageHeader title="Event-day Agenda" subtitle={`${event.name} · timeline of activities`}
         action={
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={handleXlsx}><FileSpreadsheet className="h-4 w-4 mr-2" />Excel</Button>
-            <Button variant="outline" onClick={handlePdf}><FileText className="h-4 w-4 mr-2" />PDF</Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={handleXlsx}><FileSpreadsheet className="h-4 w-4 mr-2" />Excel</Button>
+            <Button variant="outline" size="sm" onClick={handlePdf}><FileText className="h-4 w-4 mr-2" />PDF</Button>
             {isAdmin && (
               <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
-                <DialogTrigger asChild><Button onClick={() => setEditing(null)}><Plus className="h-4 w-4 mr-2" />Add activity</Button></DialogTrigger>
+                <DialogTrigger asChild><Button size="sm" onClick={() => setEditing(null)}><Plus className="h-4 w-4 mr-2" />Add activity</Button></DialogTrigger>
                 <AgendaDialog key={editing?.id ?? "new"} initial={editing} staff={staff} onSubmit={(v) => save.mutate(v)} />
               </Dialog>
             )}
           </div>
         } />
+
+      <Card className="border-amber-300/50 bg-amber-50/40 dark:bg-amber-950/10">
+        <CardContent className="p-4 space-y-2">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <StickyNote className="h-4 w-4 text-amber-600" /> Important notes
+          </div>
+          {isAdmin ? (
+            <>
+              <Textarea rows={4} value={notesValue} placeholder="Reminders, contacts, do's and don'ts for the event day…"
+                onChange={e => setNotesDraft(e.target.value)} />
+              <div className="flex justify-end gap-2">
+                {notesDraft !== null && <Button size="sm" variant="ghost" onClick={() => setNotesDraft(null)}>Cancel</Button>}
+                <Button size="sm" disabled={notesDraft === null || saveNotes.isPending} onClick={() => saveNotes.mutate(notesDraft ?? "")}>
+                  <Save className="h-4 w-4 mr-2" />Save notes
+                </Button>
+              </div>
+            </>
+          ) : (
+            <div className="text-sm whitespace-pre-wrap text-muted-foreground min-h-[1.5rem]">
+              {event.agenda_notes || "No notes yet."}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardContent className="p-0">

@@ -70,7 +70,7 @@ function StaffPage() {
   };
 
   return (
-    <div className="p-8 space-y-6 max-w-7xl">
+    <div className="p-4 md:p-8 space-y-6 max-w-7xl">
       <PageHeader title="Staff" subtitle="Central staff master — used across all events. Renaming here propagates everywhere."
         action={
           <div className="flex gap-2">
