@@ -67,13 +67,13 @@ function EventsPage() {
         supabase.from("agenda_items").select("*").eq("event_id", src.id),
       ]);
 
-      const tasks: Promise<any>[] = [];
-      if (b.data?.length) tasks.push(supabase.from("budget_items").insert(stripIds(b.data)));
-      if (c.data?.length) tasks.push(supabase.from("checklist_items").insert(stripIds(c.data)));
-      if (t.data?.length) tasks.push(supabase.from("team_members").insert(stripIds(t.data)));
-      if (a.data?.length) tasks.push(supabase.from("agenda_items").insert(stripIds(a.data)));
+      const tasks: Array<PromiseLike<{ error: any }>> = [];
+      if (b.data?.length) tasks.push(supabase.from("budget_items").insert(stripIds(b.data)) as any);
+      if (c.data?.length) tasks.push(supabase.from("checklist_items").insert(stripIds(c.data)) as any);
+      if (t.data?.length) tasks.push(supabase.from("team_members").insert(stripIds(t.data)) as any);
+      if (a.data?.length) tasks.push(supabase.from("agenda_items").insert(stripIds(a.data)) as any);
       const results = await Promise.all(tasks);
-      for (const r of results) if (r.error) throw r.error;
+      for (const r of results) if (r?.error) throw r.error;
       return newId;
     },
     onSuccess: (newId) => {
