@@ -11,6 +11,7 @@ export type Event = {
   event_date: string | null;
   status: string;
   notes: string | null;
+  agenda_notes?: string | null;
 };
 
 type Ctx = {
