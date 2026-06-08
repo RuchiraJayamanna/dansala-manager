@@ -15,6 +15,7 @@ import { useCurrentEvent, useCurrentEventId } from "@/lib/event-context";
 import { useIsAdmin } from "@/lib/use-is-admin";
 import { exportXlsx, exportPdf } from "@/lib/export";
 import { Textarea } from "@/components/ui/textarea";
+import { BulletNotes } from "@/components/BulletNotes";
 
 export const Route = createFileRoute("/_authenticated/agenda")({
   head: () => ({ meta: [{ title: "Agenda — Dansala Management System" }] }),
