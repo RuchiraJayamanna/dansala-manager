@@ -15,7 +15,6 @@ import { useCurrentEvent, useCurrentEventId } from "@/lib/event-context";
 import { useIsAdmin } from "@/lib/use-is-admin";
 import { exportXlsx, exportPdf } from "@/lib/export";
 import { Textarea } from "@/components/ui/textarea";
-import { Card as CardRoot } from "@/components/ui/card";
 
 export const Route = createFileRoute("/_authenticated/agenda")({
   head: () => ({ meta: [{ title: "Agenda — Dansala Management System" }] }),
@@ -103,7 +102,7 @@ function AgendaPage() {
           </div>
         } />
 
-      <CardRoot className="border-amber-300/50 bg-amber-50/40 dark:bg-amber-950/10">
+      <Card className="border-amber-300/50 bg-amber-50/40 dark:bg-amber-950/10">
         <CardContent className="p-4 space-y-2">
           <div className="flex items-center gap-2 text-sm font-medium">
             <StickyNote className="h-4 w-4 text-amber-600" /> Important notes
@@ -125,7 +124,7 @@ function AgendaPage() {
             </div>
           )}
         </CardContent>
-      </CardRoot>
+      </Card>
 
       <Card>
         <CardContent className="p-0">
