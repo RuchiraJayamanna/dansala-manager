@@ -270,3 +270,43 @@ function NewItemDialog({ staff, statuses, onSubmit }: { staff: Staff[]; statuses
     </DialogContent>
   );
 }
+
+function ExtraAssigneesRow({ itemId, ownerStaffId, assignees, staff, isAdmin, onAdd, onRemove }: {
+  itemId: string; ownerStaffId: string | null;
+  assignees: Assignee[]; staff: Staff[]; isAdmin: boolean;
+  onAdd: (staffId: string) => void; onRemove: (id: string) => void;
+}) {
+  const staffMap = new Map(staff.map(s => [s.id, s]));
+  const extras = assignees.filter(a => a.staff_id !== ownerStaffId);
+  const usedIds = new Set<string>([
+    ...(ownerStaffId ? [ownerStaffId] : []),
+    ...assignees.map(a => a.staff_id),
+  ]);
+  const pickable = staff.filter(s => !usedIds.has(s.id));
+  if (!isAdmin && extras.length === 0) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-1 pt-1">
+      {extras.map(a => (
+        <span key={a.id} className="inline-flex items-center gap-1 text-xs bg-muted rounded px-2 py-0.5">
+          {staffMap.get(a.staff_id)?.name ?? "?"}
+          {isAdmin && <button onClick={() => onRemove(a.id)} className="text-destructive hover:opacity-70"><X className="h-3 w-3" /></button>}
+        </span>
+      ))}
+      {isAdmin && pickable.length > 0 && (
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button size="sm" variant="ghost" className="h-6 px-2 text-xs"><UserPlus className="h-3 w-3 mr-1" />Add</Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-56 p-1 max-h-64 overflow-y-auto" align="start">
+            {pickable.map(s => (
+              <button key={s.id} onClick={() => onAdd(s.id)}
+                className="w-full text-left text-sm px-2 py-1.5 rounded hover:bg-accent">
+                {s.name}{s.department ? ` · ${s.department}` : ""}
+              </button>
+            ))}
+          </PopoverContent>
+        </Popover>
+      )}
+    </div>
+  );
+}
