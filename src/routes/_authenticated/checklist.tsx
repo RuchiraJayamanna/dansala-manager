@@ -9,14 +9,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, FileSpreadsheet, FileText, AlertCircle, StickyNote, Save } from "lucide-react";
+import { Plus, Trash2, FileSpreadsheet, FileText, AlertCircle, StickyNote, Save, UserPlus, X } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { useMasterOptions } from "@/lib/master";
-import { exportXlsx, exportPdf } from "@/lib/export";
+import { exportXlsx, exportPdf, sumF } from "@/lib/export";
 import { useCurrentEvent, useCurrentEventId } from "@/lib/event-context";
 import { useIsAdmin } from "@/lib/use-is-admin";
+import { notesToBullets } from "@/components/BulletNotes";
 
 export const Route = createFileRoute("/_authenticated/checklist")({
   head: () => ({ meta: [{ title: "Checklist — Dansala Management System" }] }),
@@ -25,6 +27,7 @@ export const Route = createFileRoute("/_authenticated/checklist")({
 
 type C = { id: string; event_id: string; title: string; owner: string | null; owner_staff_id: string | null; status: string; notes: string | null; due_date: string | null; sort_order: number };
 type Staff = { id: string; name: string; department: string | null };
+type Assignee = { id: string; checklist_item_id: string; staff_id: string };
 
 const statusColor: Record<string, string> = {
   "Pending": "bg-muted text-muted-foreground",
@@ -68,6 +71,33 @@ function ChecklistPage() {
     },
   });
 
+  const { data: assignees = [] } = useQuery({
+    queryKey: ["checklist_assignees", eventId],
+    enabled: !!eventId && items.length > 0,
+    queryFn: async () => {
+      const ids = items.map(i => i.id);
+      const { data, error } = await supabase.from("checklist_assignees" as any).select("*").in("checklist_item_id", ids);
+      if (error) throw error;
+      return (data ?? []) as Assignee[];
+    },
+  });
+
+  const addAssignee = useMutation({
+    mutationFn: async ({ itemId, staffId }: { itemId: string; staffId: string }) => {
+      const { error } = await supabase.from("checklist_assignees" as any).insert({ checklist_item_id: itemId, staff_id: staffId } as any);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["checklist_assignees"] }),
+    onError: (e: any) => toast.error(e.message),
+  });
+  const removeAssignee = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("checklist_assignees" as any).delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["checklist_assignees"] }),
+  });
+
   const [open, setOpen] = useState(false);
   const save = useMutation({
     mutationFn: async (v: Partial<C>) => {
@@ -91,19 +121,30 @@ function ChecklistPage() {
   const done = items.filter(i => i.status === "Done").length;
   const today = new Date().toISOString().slice(0, 10);
   const ownerName = (i: C) => i.owner_staff_id ? (staffMap.get(i.owner_staff_id)?.name ?? "—") : (i.owner ?? "—");
+  const responsibleNames = (i: C) => {
+    const primary = i.owner_staff_id ? (staffMap.get(i.owner_staff_id)?.name ?? null) : (i.owner ?? null);
+    const extras = assignees.filter(a => a.checklist_item_id === i.id && a.staff_id !== i.owner_staff_id)
+      .map(a => staffMap.get(a.staff_id)?.name).filter(Boolean) as string[];
+    return [primary, ...extras].filter(Boolean).join(", ") || "—";
+  };
 
   const handleXlsx = () => {
+    const bullets = notesToBullets(event?.checklist_notes);
     exportXlsx(`${event?.name}_Checklist`.replace(/\s+/g, "_"), [{ name: "Checklist", rows: [
       [`${event?.name} — Operations Checklist`], [`${done} of ${items.length} complete`], [],
-      ["Task", "Owner", "Status", "Due date", "Notes"],
-      ...items.map(i => [i.title, ownerName(i), i.status, i.due_date ?? "", i.notes ?? ""]),
+      ["Task", "Responsible person(s)", "Status", "Due date", "Notes"],
+      ...items.map(i => [i.title, responsibleNames(i), i.status, i.due_date ?? "", i.notes ?? ""]),
+      [],
+      ["Important notes"], ...bullets.map(b => [`• ${b}`]),
     ]}]);
   };
   const handlePdf = () => {
-    exportPdf(`${event?.name}_Checklist`.replace(/\s+/g, "_"), `${event?.name} — Operations Checklist`, [{
-      head: ["Task", "Owner", "Status", "Due"],
-      body: items.map(i => [i.title, ownerName(i), i.status, i.due_date ?? "—"]),
-    }], `${done} of ${items.length} complete`);
+    const bullets = notesToBullets(event?.checklist_notes);
+    exportPdf(`${event?.name}_Checklist`.replace(/\s+/g, "_"), `${event?.name} — Operations Checklist`, [
+      { head: ["Task", "Responsible person(s)", "Status", "Due"],
+        body: items.map(i => [i.title, responsibleNames(i), i.status, i.due_date ?? "—"]) },
+      ...(bullets.length ? [{ title: "Important notes", head: ["#", "Point"], body: bullets.map((b, idx) => [String(idx + 1), b]) }] : []),
+    ], `${done} of ${items.length} complete`);
   };
 
   if (!event) return <div className="p-8 text-muted-foreground">Select an event first.</div>;
@@ -149,10 +190,10 @@ function ChecklistPage() {
       </Card>
 
       <Card>
-        <CardContent className="p-0 divide-y">
+        <CardContent className="p-0 divide-y max-h-[calc(100vh-22rem)] overflow-y-auto">
           {items.map(i => (
-            <div key={i.id} className="p-4 flex items-center gap-4 flex-wrap">
-              <div className="flex-1 min-w-[200px]">
+            <div key={i.id} className="p-4 flex items-start gap-4 flex-wrap">
+              <div className="flex-1 min-w-[220px] space-y-1">
                 <div className="font-medium flex items-center gap-2">
                   {i.title}
                   {i.due_date && i.due_date < today && i.status !== "Done" && (
@@ -160,10 +201,15 @@ function ChecklistPage() {
                   )}
                 </div>
                 <div className="text-xs text-muted-foreground">{i.notes ?? ""}</div>
+                <ExtraAssigneesRow itemId={i.id} ownerStaffId={i.owner_staff_id}
+                  assignees={assignees.filter(a => a.checklist_item_id === i.id)}
+                  staff={staff} isAdmin={isAdmin}
+                  onAdd={(staffId) => addAssignee.mutate({ itemId: i.id, staffId })}
+                  onRemove={(id) => removeAssignee.mutate(id)} />
               </div>
               {isAdmin ? (
                 <Select value={i.owner_staff_id ?? "none"} onValueChange={(v) => update.mutate({ id: i.id, v: { owner_staff_id: v === "none" ? null : v } })}>
-                  <SelectTrigger className="w-48"><SelectValue placeholder="Assign staff" /></SelectTrigger>
+                  <SelectTrigger className="w-48"><SelectValue placeholder="Responsible person" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">— Unassigned —</SelectItem>
                     {staff.map(s => <SelectItem key={s.id} value={s.id}>{s.name}{s.department ? ` · ${s.department}` : ""}</SelectItem>)}
