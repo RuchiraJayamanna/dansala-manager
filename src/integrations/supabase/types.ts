@@ -197,6 +197,42 @@ export type Database = {
           },
         ]
       }
+      checklist_assignees: {
+        Row: {
+          checklist_item_id: string
+          created_at: string
+          id: string
+          staff_id: string
+        }
+        Insert: {
+          checklist_item_id: string
+          created_at?: string
+          id?: string
+          staff_id: string
+        }
+        Update: {
+          checklist_item_id?: string
+          created_at?: string
+          id?: string
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_assignees_checklist_item_id_fkey"
+            columns: ["checklist_item_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_assignees_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       checklist_items: {
         Row: {
           created_at: string
@@ -250,6 +286,38 @@ export type Database = {
             columns: ["owner_staff_id"]
             isOneToOne: false
             referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contribution_receipts: {
+        Row: {
+          contribution_id: string
+          file_name: string
+          file_path: string
+          id: string
+          uploaded_at: string
+        }
+        Insert: {
+          contribution_id: string
+          file_name: string
+          file_path: string
+          id?: string
+          uploaded_at?: string
+        }
+        Update: {
+          contribution_id?: string
+          file_name?: string
+          file_path?: string
+          id?: string
+          uploaded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contribution_receipts_contribution_id_fkey"
+            columns: ["contribution_id"]
+            isOneToOne: false
+            referencedRelation: "contributions"
             referencedColumns: ["id"]
           },
         ]
@@ -322,6 +390,7 @@ export type Database = {
           location: string | null
           name: string
           notes: string | null
+          office_contribution: number
           status: string
           team_notes: Json
           updated_at: string
@@ -337,6 +406,7 @@ export type Database = {
           location?: string | null
           name: string
           notes?: string | null
+          office_contribution?: number
           status?: string
           team_notes?: Json
           updated_at?: string
@@ -352,6 +422,7 @@ export type Database = {
           location?: string | null
           name?: string
           notes?: string | null
+          office_contribution?: number
           status?: string
           team_notes?: Json
           updated_at?: string

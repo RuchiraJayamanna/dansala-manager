@@ -7,10 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Trash2, FileSpreadsheet, FileText, StickyNote, Save } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
-import { BulletNotes } from "@/components/BulletNotes";
+import { BulletNotes, notesToBullets } from "@/components/BulletNotes";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
@@ -61,6 +60,8 @@ function TeamsPage() {
   const displayContact = (m: M) => m.staff_id ? (staffMap.get(m.staff_id)?.contact ?? m.contact) : m.contact;
 
   const [open, setOpen] = useState(false);
+  const [addPhase, setAddPhase] = useState<string | null>(null);
+  const [addTeam, setAddTeam] = useState<string | null>(null);
 
   const save = useMutation({
     mutationFn: async (v: Partial<M>) => {
@@ -86,14 +87,6 @@ function TeamsPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["members"] }); qc.invalidateQueries({ queryKey: ["dash"] }); },
   });
 
-  const toggle = useMutation({
-    mutationFn: async ({ id, attended }: { id: string; attended: boolean }) => {
-      const { error } = await supabase.from("team_members").update({ attended }).eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["members"] }),
-  });
-
   const teamNotes = (event?.team_notes ?? {}) as Record<string, string>;
   const saveTeamNote = useMutation({
     mutationFn: async ({ key, value }: { key: string; value: string }) => {
@@ -105,18 +98,54 @@ function TeamsPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const teamsInPhase = (p: string) => {
+    const set = new Set<string>();
+    members.filter(m => m.phase === p).forEach(m => set.add(m.team_name));
+    return Array.from(set);
+  };
+
   const handleXlsx = () => {
-    const sheets = PHASES.map(p => ({
-      name: p.slice(0, 31),
-      rows: [[`${event?.name} — ${p}`], [], ["Name", "Department", "Team", "Role", "Contact", "Attended"],
-        ...members.filter(m => m.phase === p).map(m => [displayName(m), displayDept(m), m.team_name, m.role, displayContact(m), m.attended ? "Yes" : "No"])],
-    }));
+    const sheets = PHASES.map(p => {
+      const rows: any[][] = [[`${event?.name} — ${p}`], []];
+      for (const team of teamsInPhase(p)) {
+        const list = members.filter(m => m.phase === p && m.team_name === team);
+        rows.push([team]);
+        rows.push(["Name", "Department", "Role", "Contact"]);
+        list.forEach(m => rows.push([displayName(m), displayDept(m) ?? "", m.role ?? "", displayContact(m) ?? ""]));
+        const notes = notesToBullets(teamNotes[`${p}::${team}`]);
+        if (notes.length) {
+          rows.push(["Important notes:"]);
+          notes.forEach(n => rows.push([`• ${n}`]));
+        }
+        rows.push([]);
+      }
+      return { name: p.slice(0, 31), rows };
+    });
     exportXlsx(`${event?.name}_Teams`.replace(/\s+/g, "_"), sheets.length ? sheets : [{ name: "Teams", rows: [["No data"]] }]);
   };
+
   const handlePdf = () => {
+    const tables: any[] = [];
+    for (const p of PHASES) {
+      for (const team of teamsInPhase(p)) {
+        const list = members.filter(m => m.phase === p && m.team_name === team);
+        tables.push({
+          title: `${p} — ${team}`,
+          head: ["Name", "Dept", "Role", "Contact"],
+          body: list.map(m => [displayName(m), displayDept(m) ?? "—", m.role ?? "—", displayContact(m) ?? "—"]),
+        });
+        const notes = notesToBullets(teamNotes[`${p}::${team}`]);
+        if (notes.length) {
+          tables.push({
+            title: `${p} — ${team} · Important notes`,
+            head: ["#", "Point"],
+            body: notes.map((n, i) => [String(i + 1), n]),
+          });
+        }
+      }
+    }
     exportPdf(`${event?.name}_Teams`.replace(/\s+/g, "_"), `${event?.name} — Teams & Assignments`,
-      PHASES.map(p => ({ title: p, head: ["Name", "Dept", "Team", "Role", "Contact"],
-        body: members.filter(m => m.phase === p).map(m => [displayName(m), displayDept(m) ?? "—", m.team_name, m.role ?? "—", displayContact(m) ?? "—"]) })),
+      tables.length ? tables : [{ head: ["Info"], body: [["No members yet"]] }],
       `${members.length} members assigned`);
   };
 
@@ -130,9 +159,11 @@ function TeamsPage() {
             <Button variant="outline" onClick={handleXlsx}><FileSpreadsheet className="h-4 w-4 mr-2" />Excel</Button>
             <Button variant="outline" onClick={handlePdf}><FileText className="h-4 w-4 mr-2" />PDF</Button>
             {isAdmin && (
-              <Dialog open={open} onOpenChange={setOpen}>
-                <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Assign member</Button></DialogTrigger>
-                <MemberDialog staff={staffList} phases={PHASES} teams={TEAMS} roles={ROLES} onSubmit={(v) => save.mutate(v)} />
+              <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setAddPhase(null); setAddTeam(null); } }}>
+                <DialogTrigger asChild><Button onClick={() => { setAddPhase(null); setAddTeam(null); }}><Plus className="h-4 w-4 mr-2" />Assign member</Button></DialogTrigger>
+                <MemberDialog staff={staffList} members={members} phases={PHASES} teams={TEAMS} roles={ROLES}
+                  initialPhase={addPhase} initialTeam={addTeam}
+                  onSubmit={(v) => save.mutate(v)} />
               </Dialog>
             )}
           </div>
@@ -145,7 +176,8 @@ function TeamsPage() {
             <PhaseView phase={phase} members={members.filter(m => m.phase === phase)} isAdmin={isAdmin}
               displayName={displayName} displayDept={displayDept} displayContact={displayContact}
               teamNotes={teamNotes} onSaveNote={(key, value) => saveTeamNote.mutate({ key, value })}
-              onDelete={(id) => del.mutate(id)} onToggle={(id, a) => toggle.mutate({ id, attended: a })} />
+              onDelete={(id) => del.mutate(id)}
+              onAddToTeam={(p, t) => { setAddPhase(p); setAddTeam(t); setOpen(true); }} />
           </TabsContent>
         ))}
       </Tabs>
@@ -153,11 +185,11 @@ function TeamsPage() {
   );
 }
 
-function PhaseView({ phase, members, isAdmin, displayName, displayDept, displayContact, teamNotes, onSaveNote, onDelete, onToggle }: {
+function PhaseView({ phase, members, isAdmin, displayName, displayDept, displayContact, teamNotes, onSaveNote, onDelete, onAddToTeam }: {
   phase: string; members: M[]; isAdmin: boolean;
   displayName: (m: M) => string; displayDept: (m: M) => string | null | undefined; displayContact: (m: M) => string | null | undefined;
   teamNotes: Record<string, string>; onSaveNote: (key: string, value: string) => void;
-  onDelete: (id: string) => void; onToggle: (id: string, a: boolean) => void;
+  onDelete: (id: string) => void; onAddToTeam: (phase: string, team: string) => void;
 }) {
   const grouped = useMemo(() => {
     const g: Record<string, M[]> = {};
@@ -168,16 +200,18 @@ function PhaseView({ phase, members, isAdmin, displayName, displayDept, displayC
   if (members.length === 0) return <div className="text-muted-foreground">No members in {phase} yet.</div>;
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid gap-4 md:grid-cols-2 max-h-[calc(100vh-18rem)] overflow-y-auto pr-2">
       {Object.entries(grouped).map(([team, list]) => {
         const key = `${phase}::${team}`;
         return (
           <Card key={team}>
-            <CardHeader className="pb-3"><CardTitle className="text-base">{team} <span className="text-muted-foreground font-normal text-sm">· {list.length}</span></CardTitle></CardHeader>
+            <CardHeader className="pb-3 flex flex-row items-center justify-between">
+              <CardTitle className="text-base">{team} <span className="text-muted-foreground font-normal text-sm">· {list.length}</span></CardTitle>
+              {isAdmin && <Button size="sm" variant="ghost" onClick={() => onAddToTeam(phase, team)}><Plus className="h-4 w-4" /></Button>}
+            </CardHeader>
             <CardContent className="space-y-3">
               {list.map(m => (
                 <div key={m.id} className="flex items-center gap-3 rounded-lg border p-2.5">
-                  <Checkbox checked={m.attended} disabled={!isAdmin} onCheckedChange={(c) => onToggle(m.id, !!c)} />
                   <div className="flex-1 min-w-0">
                     <div className="font-medium truncate">{displayName(m)} {m.role && <span className="text-xs text-muted-foreground">· {m.role}</span>}</div>
                     <div className="text-xs text-muted-foreground">{displayDept(m)}{displayContact(m) ? ` · ${displayContact(m)}` : ""}</div>
@@ -218,27 +252,42 @@ function TeamNotesBlock({ noteKey, initial, isAdmin, onSave }: { noteKey: string
   );
 }
 
-function MemberDialog({ staff, phases, teams, roles, onSubmit }: { staff: Staff[]; phases: string[]; teams: string[]; roles: string[]; onSubmit: (v: Partial<M>) => void }) {
-  const [f, setF] = useState<Partial<M>>({ staff_id: null, phase: phases[0], team_name: teams[0] ?? "", role: roles[0] ?? "Member" });
+function MemberDialog({ staff, members, phases, teams, roles, initialPhase, initialTeam, onSubmit }: {
+  staff: Staff[]; members: M[]; phases: string[]; teams: string[]; roles: string[];
+  initialPhase: string | null; initialTeam: string | null;
+  onSubmit: (v: Partial<M>) => void;
+}) {
+  const [f, setF] = useState<Partial<M>>({
+    staff_id: null,
+    phase: initialPhase ?? phases[0],
+    team_name: initialTeam ?? teams[0] ?? "",
+    role: roles[0] ?? "Member",
+  });
+  // Hide staff already on the same (phase, team)
+  const taken = new Set(
+    members.filter(m => m.phase === f.phase && m.team_name === f.team_name && m.staff_id).map(m => m.staff_id!)
+  );
+  const eligible = staff.filter(s => !taken.has(s.id));
   return (
     <DialogContent>
       <DialogHeader><DialogTitle>Assign staff to team</DialogTitle></DialogHeader>
       <form onSubmit={(e) => { e.preventDefault(); onSubmit(f); }} className="space-y-3">
         <div><Label>Staff member</Label>
           <Select value={f.staff_id ?? ""} onValueChange={(v) => setF({ ...f, staff_id: v })}>
-            <SelectTrigger><SelectValue placeholder={staff.length ? "Select staff…" : "Add staff first"} /></SelectTrigger>
-            <SelectContent>{staff.map(s => <SelectItem key={s.id} value={s.id}>{s.name}{s.department ? ` · ${s.department}` : ""}</SelectItem>)}</SelectContent>
+            <SelectTrigger><SelectValue placeholder={eligible.length ? "Select staff…" : "All staff already in this team"} /></SelectTrigger>
+            <SelectContent>{eligible.map(s => <SelectItem key={s.id} value={s.id}>{s.name}{s.department ? ` · ${s.department}` : ""}</SelectItem>)}</SelectContent>
           </Select>
+          {eligible.length === 0 && <p className="text-xs text-muted-foreground mt-1">Everyone available is already on this team for this phase.</p>}
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div><Label>Phase</Label>
-            <Select value={f.phase} onValueChange={v => setF({ ...f, phase: v })}>
+            <Select value={f.phase} onValueChange={v => setF({ ...f, phase: v, staff_id: null })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>{phases.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div><Label>Team</Label>
-            <Select value={f.team_name ?? ""} onValueChange={v => setF({ ...f, team_name: v })}>
+            <Select value={f.team_name ?? ""} onValueChange={v => setF({ ...f, team_name: v, staff_id: null })}>
               <SelectTrigger><SelectValue placeholder="Select team" /></SelectTrigger>
               <SelectContent>{teams.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
             </Select>
