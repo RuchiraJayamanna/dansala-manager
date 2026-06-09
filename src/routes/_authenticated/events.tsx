@@ -33,7 +33,7 @@ function EventsPage() {
   const save = useMutation({
     mutationFn: async (v: Partial<Event>) => {
       if (editing) {
-        const { error } = await supabase.from("events").update(v).eq("id", editing.id);
+        const { error } = await supabase.from("events").update(v as any).eq("id", editing.id);
         if (error) throw error;
       } else {
         const { error } = await supabase.from("events").insert({ name: v.name || "", year: v.year || new Date().getFullYear(), location: v.location, dansala_type: v.dansala_type, event_date: v.event_date || null, status: v.status || "Planning", notes: v.notes });
