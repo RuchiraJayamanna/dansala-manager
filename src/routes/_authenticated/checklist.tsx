@@ -78,7 +78,7 @@ function ChecklistPage() {
       const ids = items.map(i => i.id);
       const { data, error } = await supabase.from("checklist_assignees" as any).select("*").in("checklist_item_id", ids);
       if (error) throw error;
-      return (data ?? []) as Assignee[];
+      return (data ?? []) as unknown as Assignee[];
     },
   });
 
