@@ -2,13 +2,24 @@ import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
+/** Build a SUM() formula cell over a column range, 1-indexed (Excel) rows. */
+export const sumF = (col: string, startRow: number, endRow: number) =>
+  ({ t: "n", f: `SUM(${col}${startRow}:${col}${endRow})` } as any);
+
+/** Build a generic numeric formula cell. */
+export const numF = (formula: string) => ({ t: "n", f: formula } as any);
+
 export function exportXlsx(filename: string, sheets: { name: string; rows: any[][] }[]) {
   const wb = XLSX.utils.book_new();
   for (const s of sheets) {
     const ws = XLSX.utils.aoa_to_sheet(s.rows);
     // Auto column widths
     const widths = (s.rows[0] || []).map((_, ci) => ({
-      wch: Math.min(40, Math.max(10, ...s.rows.map(r => String(r[ci] ?? "").length + 2))),
+      wch: Math.min(40, Math.max(10, ...s.rows.map(r => {
+        const v = r[ci];
+        if (v && typeof v === "object" && "f" in (v as any)) return String((v as any).f).length + 2;
+        return String(v ?? "").length + 2;
+      }))),
     }));
     (ws as any)["!cols"] = widths;
     XLSX.utils.book_append_sheet(wb, ws, s.name.slice(0, 31));
