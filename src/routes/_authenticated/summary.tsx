@@ -24,6 +24,15 @@ function SummaryPage() {
   const { data: contrib = [] } = useQuery({ queryKey: ["sum_contrib", id], enabled: !!id, queryFn: async () => (await supabase.from("contributions").select("*").eq("event_id", id!)).data ?? [] });
   const { data: agenda = [] } = useQuery({ queryKey: ["sum_agenda", id], enabled: !!id, queryFn: async () => (await supabase.from("agenda_items").select("*").eq("event_id", id!).order("start_time")).data ?? [] });
   const { data: staff = [] } = useQuery({ queryKey: ["staff_list"], queryFn: async () => (await supabase.from("staff").select("id,name").eq("active", true)).data ?? [] });
+  const { data: cAssignees = [] } = useQuery({
+    queryKey: ["sum_checklist_assignees", id],
+    enabled: !!id && (tasks as any[]).length > 0,
+    queryFn: async () => {
+      const ids = (tasks as any[]).map(t => t.id);
+      const { data } = await supabase.from("checklist_assignees" as any).select("*").in("checklist_item_id", ids);
+      return (data ?? []) as any[];
+    },
+  });
   const { data: receipts = [] } = useQuery({
     queryKey: ["sum_receipts", id],
     enabled: !!id && budget.length > 0,
@@ -55,6 +64,8 @@ function SummaryPage() {
   }, {});
   const collected = contrib.filter((c: any) => c.status === "Paid" || c.status === "Completed").reduce((s, c: any) => s + Number(c.amount || 0), 0);
   const pendingC = contrib.filter((c: any) => !["Paid", "Completed"].includes(c.status)).reduce((s, c: any) => s + Number(c.amount || 0), 0);
+  const officeFunded = Number((event as any)?.office_contribution ?? 0);
+  const totalAvailable = collected + officeFunded;
   const doneTasks = tasks.filter((t: any) => t.status === "Done").length;
 
   const fileBase = (event?.name ?? "Event").replace(/\s+/g, "_");
@@ -109,18 +120,44 @@ function SummaryPage() {
   };
 
   const exportComplete = (kind: "xlsx" | "pdf") => {
-    const ownerName = (t: any) => t.owner_staff_id ? (staffMap.get(t.owner_staff_id) ?? t.owner ?? "—") : (t.owner ?? "—");
+    const responsibleNames = (t: any) => {
+      const primary = t.owner_staff_id ? (staffMap.get(t.owner_staff_id) ?? null) : (t.owner ?? null);
+      const extras = (cAssignees as any[])
+        .filter(a => a.checklist_item_id === t.id && a.staff_id !== t.owner_staff_id)
+        .map(a => staffMap.get(a.staff_id))
+        .filter(Boolean);
+      return [primary, ...extras].filter(Boolean).join(", ") || "—";
+    };
     const memberName = (m: any) => m.staff_id ? (staffMap.get(m.staff_id) ?? m.name) : m.name;
     const contribName = (c: any) => c.staff_id ? (staffMap.get(c.staff_id) ?? c.member_name) : c.member_name;
     const agendaResp = (a: any) => a.responsible_staff_id ? (staffMap.get(a.responsible_staff_id) ?? "—") : "—";
     const agendaBullets = notesToBullets(event?.agenda_notes);
     const checklistBullets = notesToBullets(event?.checklist_notes);
     const teamNotes = (event?.team_notes ?? {}) as Record<string, string>;
-    const teamNotesRows: [string, string][] = [];
-    for (const [k, v] of Object.entries(teamNotes)) {
-      for (const b of notesToBullets(v)) teamNotesRows.push([k, b]);
-    }
+    // Group members by phase → team for export
+    const phaseTeamMap: Record<string, Record<string, any[]>> = {};
+    (members as any[]).forEach(m => {
+      (phaseTeamMap[m.phase] ??= {});
+      (phaseTeamMap[m.phase][m.team_name] ??= []).push(m);
+    });
     if (kind === "xlsx") {
+      // Build Teams sheet grouped by phase → team with notes
+      const teamsRows: any[][] = [];
+      for (const [phase, teamMap] of Object.entries(phaseTeamMap)) {
+        teamsRows.push([phase.toUpperCase()]);
+        teamsRows.push([]);
+        for (const [team, list] of Object.entries(teamMap)) {
+          teamsRows.push([team]);
+          teamsRows.push(["Name", "Department", "Role", "Contact"]);
+          list.forEach((m: any) => teamsRows.push([memberName(m), m.department ?? "", m.role ?? "", m.contact ?? ""]));
+          const notes = notesToBullets(teamNotes[`${phase}::${team}`]);
+          if (notes.length) {
+            teamsRows.push(["Important notes:"]);
+            notes.forEach(n => teamsRows.push([`• ${n}`]));
+          }
+          teamsRows.push([]);
+        }
+      }
       exportXlsx(`${fileBase}_Complete_Summary`, [
         { name: "Event Info", rows: [["Event"], ["Name", event?.name ?? ""], ["Year", event?.year ?? ""], ["Location", event?.location ?? ""], ["Type", event?.dansala_type ?? ""], ["Date", event?.event_date ?? ""], ["Status", event?.status ?? ""]] },
         { name: "Budget Summary", rows: [["Category", "Planned", "Actual", "Variance"], ...Object.entries(byCat).map(([c, v]) => [c, v.p, v.a, v.p - v.a]), [], ["TOTAL", planned, actual, planned - actual]] },
@@ -131,17 +168,33 @@ function SummaryPage() {
         { name: "Agenda", rows: [["Start", "End", "Activity", "Location", "Responsible", "Notes"],
           ...agenda.map((a: any) => [a.start_time ?? "", a.end_time ?? "", a.title, a.location ?? "", agendaResp(a), a.notes ?? ""])] },
         { name: "Agenda Notes", rows: [["Important notes"], ...agendaBullets.map(b => [`• ${b}`])] },
-        { name: "Teams", rows: [["Name", "Department", "Phase", "Team", "Role", "Attended"],
-          ...members.map((m: any) => [memberName(m), m.department, m.phase, m.team_name, m.role, m.attended ? "Yes" : "No"])] },
-        { name: "Team Notes", rows: [["Phase :: Team", "Note"], ...teamNotesRows] },
-        { name: "Checklist", rows: [["Task", "Owner", "Status", "Due", "Notes"],
-          ...tasks.map((t: any) => [t.title, ownerName(t), t.status, t.due_date, t.notes])] },
+        { name: "Teams", rows: teamsRows },
+        { name: "Checklist", rows: [["Task", "Responsible person(s)", "Status", "Due", "Notes"],
+          ...tasks.map((t: any) => [t.title, responsibleNames(t), t.status, t.due_date, t.notes])] },
         { name: "Checklist Notes", rows: [["Important notes"], ...checklistBullets.map(b => [`• ${b}`])] },
         { name: "Contributions", rows: [["Member", "Team", "Amount", "Status", "Paid on", "Note"],
           ...contrib.map((c: any) => [contribName(c), c.team, Number(c.amount), c.status, c.paid_at, c.note]),
-          [], ["Collected", "", collected], ["Pending", "", pendingC]] },
+          [], ["Collected", "", collected], ["Pending", "", pendingC], ["Office funded", "", officeFunded], ["TOTAL AVAILABLE", "", totalAvailable]] },
       ]);
     } else {
+      const teamTables: any[] = [];
+      for (const [phase, teamMap] of Object.entries(phaseTeamMap)) {
+        for (const [team, list] of Object.entries(teamMap)) {
+          teamTables.push({
+            title: `${phase} — ${team}`,
+            head: ["Name", "Dept", "Role", "Contact"],
+            body: list.map((m: any) => [memberName(m), m.department ?? "—", m.role ?? "—", m.contact ?? "—"]),
+          });
+          const notes = notesToBullets(teamNotes[`${phase}::${team}`]);
+          if (notes.length) {
+            teamTables.push({
+              title: `${phase} — ${team} · Important notes`,
+              head: ["#", "Point"],
+              body: notes.map((n, i) => [String(i + 1), n]),
+            });
+          }
+        }
+      }
       exportPdf(`${fileBase}_Complete_Summary`, `${event?.name} — Complete Summary`, [
         { title: "Budget by Category", head: ["Category", "Planned", "Actual", "Variance"],
           body: Object.entries(byCat).map(([c, v]) => [c, lkr(v.p), lkr(v.a), lkr(v.p - v.a)]),
@@ -154,13 +207,16 @@ function SummaryPage() {
         { title: "Event Agenda", head: ["Start", "End", "Activity", "Location", "Responsible"],
           body: agenda.map((a: any) => [a.start_time ?? "—", a.end_time ?? "—", a.title, a.location ?? "—", agendaResp(a)]) },
         ...(agendaBullets.length ? [{ title: "Agenda — Important Notes", head: ["#", "Point"], body: agendaBullets.map((b, i) => [String(i + 1), b]) }] : []),
-        { title: "Checklist", head: ["Task", "Owner", "Status", "Due"],
-          body: tasks.map((t: any) => [t.title, ownerName(t), t.status, t.due_date ?? "—"]) },
+        ...teamTables,
+        { title: "Checklist", head: ["Task", "Responsible person(s)", "Status", "Due"],
+          body: tasks.map((t: any) => [t.title, responsibleNames(t), t.status, t.due_date ?? "—"]) },
         ...(checklistBullets.length ? [{ title: "Checklist — Important Notes", head: ["#", "Point"], body: checklistBullets.map((b, i) => [String(i + 1), b]) }] : []),
-        ...(teamNotesRows.length ? [{ title: "Team Notes", head: ["Phase · Team", "Note"], body: teamNotesRows.map(([k, v]) => [k.replace("::", " · "), v]) }] : []),
         { title: "Contributions", head: ["Member", "Team", "Amount", "Status"],
           body: contrib.map((c: any) => [contribName(c), c.team, lkr(Number(c.amount)), c.status]),
           foot: [["", "Collected", lkr(collected), `Pending ${lkr(pendingC)}`]] },
+        { title: "Funding breakdown", head: ["Source", "Amount"],
+          body: [["Collected from staff", lkr(collected)], ["Office funded", lkr(officeFunded)]],
+          foot: [["TOTAL AVAILABLE", lkr(totalAvailable)]] },
       ], `${members.length} members · ${tasks.length} tasks · ${agenda.length} agenda items`);
     }
   };
