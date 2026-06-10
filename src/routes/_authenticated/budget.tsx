@@ -239,14 +239,16 @@ function ReceiptCell({ itemId, receipts, isAdmin }: { itemId: string; receipts: 
   const ref = useRef<HTMLInputElement>(null);
 
   const upload = useMutation({
-    mutationFn: async (file: File) => {
-      const path = `${itemId}/${Date.now()}-${file.name}`;
-      const up = await supabase.storage.from("receipts").upload(path, file);
-      if (up.error) throw up.error;
-      const { error } = await supabase.from("budget_receipts").insert({ budget_item_id: itemId, file_path: path, file_name: file.name });
-      if (error) throw error;
+    mutationFn: async (files: File[]) => {
+      for (const file of files) {
+        const path = `${itemId}/${Date.now()}-${file.name}`;
+        const up = await supabase.storage.from("receipts").upload(path, file);
+        if (up.error) throw up.error;
+        const { error } = await supabase.from("budget_receipts").insert({ budget_item_id: itemId, file_path: path, file_name: file.name });
+        if (error) throw error;
+      }
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["receipts"] }); toast.success("Uploaded"); },
+    onSuccess: (_d, files) => { qc.invalidateQueries({ queryKey: ["receipts"] }); toast.success(`Uploaded ${files.length} file${files.length > 1 ? "s" : ""}`); },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -273,7 +275,7 @@ function ReceiptCell({ itemId, receipts, isAdmin }: { itemId: string; receipts: 
       ))}
       {isAdmin && (
         <>
-          <input ref={ref} type="file" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) upload.mutate(f); e.target.value = ""; }} />
+          <input ref={ref} type="file" hidden multiple onChange={(e) => { const fs = Array.from(e.target.files ?? []); if (fs.length) upload.mutate(fs); e.target.value = ""; }} />
           <Button size="sm" variant="ghost" onClick={() => ref.current?.click()} className="h-7"><Upload className="h-3 w-3" /></Button>
         </>
       )}
