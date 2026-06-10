@@ -132,18 +132,17 @@ function ChecklistPage() {
     const bullets = notesToBullets(event?.checklist_notes);
     exportXlsx(`${event?.name}_Checklist`.replace(/\s+/g, "_"), [{ name: "Checklist", rows: [
       [`${event?.name} — Operations Checklist`], [`${done} of ${items.length} complete`], [],
+      ...(bullets.length ? [["Important notes"], ...bullets.map(b => [`• ${b}`]), []] : []),
       ["Task", "Responsible person(s)", "Status", "Due date", "Notes"],
       ...items.map(i => [i.title, responsibleNames(i), i.status, i.due_date ?? "", i.notes ?? ""]),
-      [],
-      ["Important notes"], ...bullets.map(b => [`• ${b}`]),
     ]}]);
   };
   const handlePdf = () => {
     const bullets = notesToBullets(event?.checklist_notes);
     exportPdf(`${event?.name}_Checklist`.replace(/\s+/g, "_"), `${event?.name} — Operations Checklist`, [
-      { head: ["Task", "Responsible person(s)", "Status", "Due"],
+      { title: "Operations Checklist", notes: bullets,
+        head: ["Task", "Responsible person(s)", "Status", "Due"],
         body: items.map(i => [i.title, responsibleNames(i), i.status, i.due_date ?? "—"]) },
-      ...(bullets.length ? [{ title: "Important notes", head: ["#", "Point"], body: bullets.map((b, idx) => [String(idx + 1), b]) }] : []),
     ], `${done} of ${items.length} complete`);
   };
 
