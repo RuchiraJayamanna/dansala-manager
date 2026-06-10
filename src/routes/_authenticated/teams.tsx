@@ -268,6 +268,24 @@ function TeamNotesBlock({ noteKey, initial, isAdmin, onSave }: { noteKey: string
   );
 }
 
+function VenueBlock({ noteKey, initial, isAdmin, onSave }: { noteKey: string; initial: string; isAdmin: boolean; onSave: (key: string, value: string) => void }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const value = draft ?? initial;
+  if (!isAdmin) {
+    return <div className="text-xs text-muted-foreground">Venue: <span className="text-foreground font-medium">{initial || "—"}</span></div>;
+  }
+  return (
+    <div className="flex items-center gap-2">
+      <Label className="text-xs whitespace-nowrap">Venue</Label>
+      <Input value={value} placeholder="e.g. Main Hall" onChange={e => setDraft(e.target.value)} className="h-8" />
+      {draft !== null && <Button size="sm" variant="ghost" onClick={() => setDraft(null)}>Cancel</Button>}
+      <Button size="sm" disabled={draft === null} onClick={() => { onSave(noteKey, draft ?? ""); setDraft(null); }}>
+        <Save className="h-3.5 w-3.5" />
+      </Button>
+    </div>
+  );
+}
+
 function MemberDialog({ staff, members, phases, teams, roles, initialPhase, initialTeam, onSubmit }: {
   staff: Staff[]; members: M[]; phases: string[]; teams: string[]; roles: string[];
   initialPhase: string | null; initialTeam: string | null;
