@@ -198,10 +198,12 @@ function TeamsPage() {
   );
 }
 
-function PhaseView({ phase, members, isAdmin, displayName, displayDept, displayContact, teamNotes, onSaveNote, onDelete, onAddToTeam }: {
+function PhaseView({ phase, members, isAdmin, displayName, displayDept, displayContact, teamNotes, teamVenues, onSaveNote, onSaveVenue, onDelete, onAddToTeam }: {
   phase: string; members: M[]; isAdmin: boolean;
   displayName: (m: M) => string; displayDept: (m: M) => string | null | undefined; displayContact: (m: M) => string | null | undefined;
-  teamNotes: Record<string, string>; onSaveNote: (key: string, value: string) => void;
+  teamNotes: Record<string, string>; teamVenues: Record<string, string>;
+  onSaveNote: (key: string, value: string) => void;
+  onSaveVenue: (key: string, value: string) => void;
   onDelete: (id: string) => void; onAddToTeam: (phase: string, team: string) => void;
 }) {
   const grouped = useMemo(() => {
@@ -223,6 +225,7 @@ function PhaseView({ phase, members, isAdmin, displayName, displayDept, displayC
               {isAdmin && <Button size="sm" variant="ghost" onClick={() => onAddToTeam(phase, team)}><Plus className="h-4 w-4" /></Button>}
             </CardHeader>
             <CardContent className="space-y-3">
+              <VenueBlock noteKey={key} initial={teamVenues[key] ?? ""} isAdmin={isAdmin} onSave={onSaveVenue} />
               {list.map(m => (
                 <div key={m.id} className="flex items-center gap-3 rounded-lg border p-2.5">
                   <div className="flex-1 min-w-0">
