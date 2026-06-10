@@ -180,21 +180,17 @@ function SummaryPage() {
       const teamTables: any[] = [];
       for (const [phase, teamMap] of Object.entries(phaseTeamMap)) {
         for (const [team, list] of Object.entries(teamMap)) {
+          const notes = notesToBullets(teamNotes[`${phase}::${team}`]);
           teamTables.push({
             title: `${phase} — ${team}`,
             head: ["Name", "Dept", "Role", "Contact"],
             body: list.map((m: any) => [memberName(m), m.department ?? "—", m.role ?? "—", m.contact ?? "—"]),
+            notes,
           });
-          const notes = notesToBullets(teamNotes[`${phase}::${team}`]);
-          if (notes.length) {
-            teamTables.push({
-              title: `${phase} — ${team} · Important notes`,
-              head: ["#", "Point"],
-              body: notes.map((n, i) => [String(i + 1), n]),
-            });
-          }
         }
       }
+      // Mark the first team table to start on a new page
+      if (teamTables.length) teamTables[0].newPage = true;
       exportPdf(`${fileBase}_Complete_Summary`, `${event?.name} — Complete Summary`, [
         { title: "Budget by Category", head: ["Category", "Planned", "Actual", "Variance"],
           body: Object.entries(byCat).map(([c, v]) => [c, lkr(v.p), lkr(v.a), lkr(v.p - v.a)]),
@@ -204,14 +200,14 @@ function SummaryPage() {
           head: ["Category", "Item", "File", "Link"],
           body: (receipts as any[]).map(r => { const it = itemMap.get(r.budget_item_id); return [it?.category ?? "—", it?.item ?? "—", r.file_name, r.url]; }),
         }] : []),
-        { title: "Event Agenda", head: ["Start", "End", "Activity", "Location", "Responsible"],
+        { title: "Event Agenda", newPage: true, notes: agendaBullets,
+          head: ["Start", "End", "Activity", "Location", "Responsible"],
           body: agenda.map((a: any) => [a.start_time ?? "—", a.end_time ?? "—", a.title, a.location ?? "—", agendaResp(a)]) },
-        ...(agendaBullets.length ? [{ title: "Agenda — Important Notes", head: ["#", "Point"], body: agendaBullets.map((b, i) => [String(i + 1), b]) }] : []),
         ...teamTables,
-        { title: "Checklist", head: ["Task", "Responsible person(s)", "Status", "Due"],
+        { title: "Checklist", newPage: true, notes: checklistBullets,
+          head: ["Task", "Responsible person(s)", "Status", "Due"],
           body: tasks.map((t: any) => [t.title, responsibleNames(t), t.status, t.due_date ?? "—"]) },
-        ...(checklistBullets.length ? [{ title: "Checklist — Important Notes", head: ["#", "Point"], body: checklistBullets.map((b, i) => [String(i + 1), b]) }] : []),
-        { title: "Contributions", head: ["Member", "Team", "Amount", "Status"],
+        { title: "Contributions", newPage: true, head: ["Member", "Team", "Amount", "Status"],
           body: contrib.map((c: any) => [contribName(c), c.team, lkr(Number(c.amount)), c.status]),
           foot: [["", "Collected", lkr(collected), `Pending ${lkr(pendingC)}`]] },
         { title: "Funding breakdown", head: ["Source", "Amount"],
