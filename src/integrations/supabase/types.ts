@@ -393,6 +393,7 @@ export type Database = {
           office_contribution: number
           status: string
           team_notes: Json
+          team_venues: Json
           updated_at: string
           year: number
         }
@@ -409,6 +410,7 @@ export type Database = {
           office_contribution?: number
           status?: string
           team_notes?: Json
+          team_venues?: Json
           updated_at?: string
           year: number
         }
@@ -425,6 +427,7 @@ export type Database = {
           office_contribution?: number
           status?: string
           team_notes?: Json
+          team_venues?: Json
           updated_at?: string
           year?: number
         }
