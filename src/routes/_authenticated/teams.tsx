@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Trash2, FileSpreadsheet, FileText, StickyNote, Save } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { BulletNotes, notesToBullets } from "@/components/BulletNotes";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -88,6 +89,7 @@ function TeamsPage() {
   });
 
   const teamNotes = (event?.team_notes ?? {}) as Record<string, string>;
+  const teamVenues = (event?.team_venues ?? {}) as Record<string, string>;
   const saveTeamNote = useMutation({
     mutationFn: async ({ key, value }: { key: string; value: string }) => {
       const next = { ...teamNotes, [key]: value };
@@ -95,6 +97,15 @@ function TeamsPage() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["events"] }); toast.success("Notes saved"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const saveTeamVenue = useMutation({
+    mutationFn: async ({ key, value }: { key: string; value: string }) => {
+      const next = { ...teamVenues, [key]: value };
+      const { error } = await supabase.from("events").update({ team_venues: next } as any).eq("id", eventId!);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["events"] }); toast.success("Venue saved"); },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -109,10 +120,12 @@ function TeamsPage() {
       const rows: any[][] = [[`${event?.name} — ${p}`], []];
       for (const team of teamsInPhase(p)) {
         const list = members.filter(m => m.phase === p && m.team_name === team);
-        rows.push([team]);
-        rows.push(["Name", "Department", "Role", "Contact"]);
-        list.forEach(m => rows.push([displayName(m), displayDept(m) ?? "", m.role ?? "", displayContact(m) ?? ""]));
-        const notes = notesToBullets(teamNotes[`${p}::${team}`]);
+        const key = `${p}::${team}`;
+        const venue = teamVenues[key] ?? "";
+        rows.push([team + (venue ? `  ·  Venue: ${venue}` : "")]);
+        rows.push(["Name", "Department", "Role", "Contact", "Venue"]);
+        list.forEach(m => rows.push([displayName(m), displayDept(m) ?? "", m.role ?? "", displayContact(m) ?? "", venue]));
+        const notes = notesToBullets(teamNotes[key]);
         if (notes.length) {
           rows.push(["Important notes:"]);
           notes.forEach(n => rows.push([`• ${n}`]));
@@ -127,22 +140,20 @@ function TeamsPage() {
   const handlePdf = () => {
     const tables: any[] = [];
     for (const p of PHASES) {
-      for (const team of teamsInPhase(p)) {
+      const teamsArr = teamsInPhase(p);
+      teamsArr.forEach((team, idx) => {
         const list = members.filter(m => m.phase === p && m.team_name === team);
+        const key = `${p}::${team}`;
+        const venue = teamVenues[key] ?? "";
+        const notes = notesToBullets(teamNotes[key]);
         tables.push({
-          title: `${p} — ${team}`,
-          head: ["Name", "Dept", "Role", "Contact"],
-          body: list.map(m => [displayName(m), displayDept(m) ?? "—", m.role ?? "—", displayContact(m) ?? "—"]),
+          title: `${p} — ${team}${venue ? `  ·  Venue: ${venue}` : ""}`,
+          newPage: idx === 0,
+          notes,
+          head: ["Name", "Dept", "Role", "Contact", "Venue"],
+          body: list.map(m => [displayName(m), displayDept(m) ?? "—", m.role ?? "—", displayContact(m) ?? "—", venue || "—"]),
         });
-        const notes = notesToBullets(teamNotes[`${p}::${team}`]);
-        if (notes.length) {
-          tables.push({
-            title: `${p} — ${team} · Important notes`,
-            head: ["#", "Point"],
-            body: notes.map((n, i) => [String(i + 1), n]),
-          });
-        }
-      }
+      });
     }
     exportPdf(`${event?.name}_Teams`.replace(/\s+/g, "_"), `${event?.name} — Teams & Assignments`,
       tables.length ? tables : [{ head: ["Info"], body: [["No members yet"]] }],
@@ -175,7 +186,9 @@ function TeamsPage() {
           <TabsContent key={phase} value={phase} className="space-y-4 pt-4">
             <PhaseView phase={phase} members={members.filter(m => m.phase === phase)} isAdmin={isAdmin}
               displayName={displayName} displayDept={displayDept} displayContact={displayContact}
-              teamNotes={teamNotes} onSaveNote={(key, value) => saveTeamNote.mutate({ key, value })}
+              teamNotes={teamNotes} teamVenues={teamVenues}
+              onSaveNote={(key, value) => saveTeamNote.mutate({ key, value })}
+              onSaveVenue={(key, value) => saveTeamVenue.mutate({ key, value })}
               onDelete={(id) => del.mutate(id)}
               onAddToTeam={(p, t) => { setAddPhase(p); setAddTeam(t); setOpen(true); }} />
           </TabsContent>
