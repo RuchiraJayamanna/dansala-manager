@@ -27,7 +27,14 @@ export function exportXlsx(filename: string, sheets: { name: string; rows: any[]
   XLSX.writeFile(wb, filename.endsWith(".xlsx") ? filename : `${filename}.xlsx`);
 }
 
-export type PdfTable = { title?: string; head: string[]; body: (string | number)[][]; foot?: (string | number)[][] };
+export type PdfTable = {
+  title?: string;
+  head: string[];
+  body: (string | number)[][];
+  foot?: (string | number)[][];
+  notes?: string[];
+  newPage?: boolean;
+};
 
 export function exportPdf(filename: string, title: string, tables: PdfTable[], subtitle?: string) {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
@@ -49,11 +56,35 @@ export function exportPdf(filename: string, title: string, tables: PdfTable[], s
 
   let startY = subtitle ? 90 : 75;
   for (const t of tables) {
+    if (t.newPage) {
+      doc.addPage();
+      startY = 50;
+    }
     if (t.title) {
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
       doc.text(t.title, 40, startY);
       startY += 8;
+    }
+    if (t.notes && t.notes.length) {
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "italic");
+      doc.setTextColor(80);
+      startY += 6;
+      for (const n of t.notes) {
+        const wrapped = doc.splitTextToSize(`• ${n}`, pageW - 100) as string[];
+        for (const line of wrapped) {
+          if (startY > doc.internal.pageSize.getHeight() - 60) {
+            doc.addPage();
+            startY = 50;
+          }
+          doc.text(line, 50, startY);
+          startY += 11;
+        }
+      }
+      doc.setTextColor(0);
+      doc.setFont("helvetica", "normal");
+      startY += 2;
     }
     autoTable(doc, {
       startY: startY + 4,
