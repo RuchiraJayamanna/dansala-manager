@@ -134,6 +134,7 @@ function SummaryPage() {
     const agendaBullets = notesToBullets(event?.agenda_notes);
     const checklistBullets = notesToBullets(event?.checklist_notes);
     const teamNotes = (event?.team_notes ?? {}) as Record<string, string>;
+    const teamVenues = ((event as any)?.team_venues ?? {}) as Record<string, string>;
     // Group members by phase → team for export
     const phaseTeamMap: Record<string, Record<string, any[]>> = {};
     (members as any[]).forEach(m => {
@@ -147,10 +148,12 @@ function SummaryPage() {
         teamsRows.push([phase.toUpperCase()]);
         teamsRows.push([]);
         for (const [team, list] of Object.entries(teamMap)) {
-          teamsRows.push([team]);
-          teamsRows.push(["Name", "Department", "Role", "Contact"]);
-          list.forEach((m: any) => teamsRows.push([memberName(m), m.department ?? "", m.role ?? "", m.contact ?? ""]));
-          const notes = notesToBullets(teamNotes[`${phase}::${team}`]);
+          const key = `${phase}::${team}`;
+          const venue = teamVenues[key] ?? "";
+          teamsRows.push([team + (venue ? `  ·  Venue: ${venue}` : "")]);
+          teamsRows.push(["Name", "Department", "Role", "Contact", "Venue"]);
+          list.forEach((m: any) => teamsRows.push([memberName(m), m.department ?? "", m.role ?? "", m.contact ?? "", venue]));
+          const notes = notesToBullets(teamNotes[key]);
           if (notes.length) {
             teamsRows.push(["Important notes:"]);
             notes.forEach(n => teamsRows.push([`• ${n}`]));
@@ -180,11 +183,13 @@ function SummaryPage() {
       const teamTables: any[] = [];
       for (const [phase, teamMap] of Object.entries(phaseTeamMap)) {
         for (const [team, list] of Object.entries(teamMap)) {
-          const notes = notesToBullets(teamNotes[`${phase}::${team}`]);
+          const key = `${phase}::${team}`;
+          const venue = teamVenues[key] ?? "";
+          const notes = notesToBullets(teamNotes[key]);
           teamTables.push({
-            title: `${phase} — ${team}`,
-            head: ["Name", "Dept", "Role", "Contact"],
-            body: list.map((m: any) => [memberName(m), m.department ?? "—", m.role ?? "—", m.contact ?? "—"]),
+            title: `${phase} — ${team}${venue ? `  ·  Venue: ${venue}` : ""}`,
+            head: ["Name", "Dept", "Role", "Contact", "Venue"],
+            body: list.map((m: any) => [memberName(m), m.department ?? "—", m.role ?? "—", m.contact ?? "—", venue || "—"]),
             notes,
           });
         }

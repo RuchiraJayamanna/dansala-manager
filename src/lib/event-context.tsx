@@ -14,6 +14,7 @@ export type Event = {
   agenda_notes?: string | null;
   checklist_notes?: string | null;
   team_notes?: Record<string, string> | null;
+  team_venues?: Record<string, string> | null;
   office_contribution?: number | null;
 };
 

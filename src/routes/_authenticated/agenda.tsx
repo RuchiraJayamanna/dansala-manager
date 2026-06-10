@@ -73,13 +73,19 @@ function AgendaPage() {
   });
 
   const handleXlsx = () => {
+    const bullets = (event?.agenda_notes ?? "").split(/\r?\n/).map(s => s.replace(/^[\s•\-*]+/, "").trim()).filter(Boolean);
     exportXlsx(`${event?.name}_Agenda`.replace(/\s+/g, "_"), [{ name: "Agenda", rows: [
-      [`${event?.name} — Event Agenda`], [], ["Start", "End", "Activity", "Location", "Responsible", "Notes"],
+      [`${event?.name} — Event Agenda`], [],
+      ...(bullets.length ? [["Important notes"], ...bullets.map(b => [`• ${b}`]), []] : []),
+      ["Start", "End", "Activity", "Location", "Responsible", "Notes"],
       ...items.map(i => [i.start_time ?? "", i.end_time ?? "", i.title, i.location ?? "", i.responsible_staff_id ? staffMap.get(i.responsible_staff_id) : "", i.notes ?? ""]),
     ]}]);
   };
   const handlePdf = () => {
+    const bullets = (event?.agenda_notes ?? "").split(/\r?\n/).map(s => s.replace(/^[\s•\-*]+/, "").trim()).filter(Boolean);
     exportPdf(`${event?.name}_Agenda`.replace(/\s+/g, "_"), `${event?.name} — Event Agenda`, [{
+      title: "Event Agenda",
+      notes: bullets,
       head: ["Start", "End", "Activity", "Location", "Responsible"],
       body: items.map(i => [i.start_time ?? "—", i.end_time ?? "—", i.title, i.location ?? "—", i.responsible_staff_id ? (staffMap.get(i.responsible_staff_id) ?? "—") : "—"]),
     }], `${items.length} activities`);
