@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, Link, useNavigate, useRouterState } from "@tan
 import { supabase } from "@/integrations/supabase/client";
 import {
   LayoutDashboard, Wallet, Users, ListChecks, HandCoins, LogOut, Utensils,
-  UserCog, BarChart3, CalendarClock, CalendarRange, Settings, LogIn, ShieldCheck, ChevronsUpDown, Menu,
+  UserCog, BarChart3, CalendarClock, CalendarRange, Settings, LogIn, ShieldCheck, ChevronsUpDown, Menu, FolderOpen, Boxes,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -28,7 +28,9 @@ const eventNav = [
   { to: "/agenda", label: "Event Agenda", icon: CalendarClock },
   { to: "/teams", label: "Teams", icon: Users },
   { to: "/checklist", label: "Checklist", icon: ListChecks },
+  { to: "/items", label: "Item Checklist", icon: Boxes },
   { to: "/contributions", label: "Contributions", icon: HandCoins },
+  { to: "/documents", label: "Documents", icon: FolderOpen },
 ] as const;
 
 const topSetupNav = [
@@ -123,7 +125,7 @@ function Layout() {
 
   return (
     <div className="min-h-screen bg-background md:flex">
-      <aside className="hidden md:flex w-64 shrink-0 border-r bg-card flex-col">
+      <aside className="hidden md:flex w-64 shrink-0 border-r bg-card flex-col sticky top-0 h-screen">
         {sidebarContent}
       </aside>
       <header className="md:hidden sticky top-0 z-30 flex items-center justify-between gap-2 px-3 h-14 border-b bg-card">
