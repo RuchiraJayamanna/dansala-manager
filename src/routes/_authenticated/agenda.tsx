@@ -134,7 +134,7 @@ function AgendaPage() {
 
       <Card>
         <CardContent className="p-0">
-          <div className="divide-y max-h-[calc(100vh-26rem)] overflow-y-auto">
+          <div className="divide-y max-h-[calc(100vh-16rem)] overflow-y-auto">
             {items.map(i => (
               <div key={i.id} className="p-4 flex items-start gap-4">
                 <div className="w-28 shrink-0 text-sm">

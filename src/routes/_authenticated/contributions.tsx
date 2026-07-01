@@ -8,13 +8,14 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, FileSpreadsheet, FileText, Paperclip, Upload, X, Save } from "lucide-react";
+import { Plus, Trash2, FileSpreadsheet, FileText, Paperclip, Upload, X, Save, Receipt as ReceiptIcon, Lock } from "lucide-react";
 import { useState, useRef } from "react";
 import { toast } from "sonner";
 import { lkr } from "@/lib/format";
 import { PageHeader } from "@/components/PageHeader";
 import { useMasterOptions } from "@/lib/master";
 import { exportXlsx, exportPdf, sumF } from "@/lib/export";
+import jsPDF from "jspdf";
 import { useCurrentEvent, useCurrentEventId } from "@/lib/event-context";
 import { useIsAdmin } from "@/lib/use-is-admin";
 
@@ -23,7 +24,7 @@ export const Route = createFileRoute("/_authenticated/contributions")({
   component: ContributionsPage,
 });
 
-type Co = { id: string; event_id: string; member_name: string; team: string; amount: number; status: string; paid_at: string | null; note: string | null; staff_id: string | null };
+type Co = { id: string; event_id: string; member_name: string; team: string; amount: number; status: string; paid_at: string | null; note: string | null; staff_id: string | null; payment_type?: string | null };
 type Staff = { id: string; name: string; department: string | null };
 type CReceipt = { id: string; contribution_id: string; file_path: string; file_name: string };
 
@@ -66,6 +67,7 @@ function ContributionsPage() {
 
   const displayName = (r: Co) => r.staff_id ? (staffMap.get(r.staff_id)?.name ?? r.member_name) : r.member_name;
   const paidStatuses = ["Paid", "Completed"];
+  const isPaid = (r: Co) => paidStatuses.includes(r.status);
   const collected = rows.filter(r => paidStatuses.includes(r.status)).reduce((s, r) => s + Number(r.amount), 0);
   const pending = rows.filter(r => !paidStatuses.includes(r.status)).reduce((s, r) => s + Number(r.amount), 0);
   const office = Number(event?.office_contribution ?? 0);
@@ -95,11 +97,48 @@ function ContributionsPage() {
         status: v.status || "Pending",
         note: v.note,
         staff_id: v.staff_id ?? null,
-      });
+        payment_type: v.payment_type || "Online",
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["contrib"] }); qc.invalidateQueries({ queryKey: ["dash"] }); setOpen(false); toast.success("Added"); },
   });
+
+  const generateReceipt = (r: Co) => {
+    const doc = new jsPDF({ unit: "pt", format: "a5" });
+    const w = doc.internal.pageSize.getWidth();
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.text("PAYMENT RECEIPT", w / 2, 50, { align: "center" });
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "normal");
+    doc.text(event?.name ?? "", w / 2, 68, { align: "center" });
+    doc.setDrawColor(180);
+    doc.line(30, 82, w - 30, 82);
+    const rows: Array<[string, string]> = [
+      ["Receipt No.", r.id.slice(0, 8).toUpperCase()],
+      ["Date", r.paid_at ?? new Date().toISOString().slice(0, 10)],
+      ["Received From", displayName(r)],
+      ["Team", r.team],
+      ["Payment Type", r.payment_type ?? "Online"],
+      ["Status", r.status],
+      ["Amount", lkr(Number(r.amount))],
+    ];
+    let y = 105;
+    rows.forEach(([k, v]) => {
+      doc.setFont("helvetica", "bold"); doc.text(k, 40, y);
+      doc.setFont("helvetica", "normal"); doc.text(String(v), 160, y);
+      y += 22;
+    });
+    if (r.note) { doc.setFont("helvetica", "bold"); doc.text("Note", 40, y); doc.setFont("helvetica", "normal");
+      const wrapped = doc.splitTextToSize(r.note, w - 200) as string[]; doc.text(wrapped, 160, y); y += 22 * wrapped.length; }
+    y += 20;
+    doc.setDrawColor(180); doc.line(30, y, w - 30, y);
+    doc.setFontSize(9); doc.setTextColor(120);
+    doc.text("Thank you for your contribution.", w / 2, y + 20, { align: "center" });
+    doc.text(`Generated ${new Date().toLocaleString()}`, w / 2, y + 34, { align: "center" });
+    doc.save(`Receipt_${displayName(r).replace(/\s+/g, "_")}_${r.id.slice(0, 6)}.pdf`);
+  };
   const update = useMutation({
     mutationFn: async ({ id, v }: { id: string; v: Partial<Co> }) => {
       const payload: any = { ...v };
@@ -210,12 +249,13 @@ function ContributionsPage() {
       </div>
 
       <Card>
-        <CardContent className="p-0 max-h-[calc(100vh-26rem)] overflow-y-auto">
+        <CardContent className="p-0 max-h-[calc(100vh-16rem)] overflow-y-auto">
           <Table>
             <TableHeader className="sticky top-0 bg-background z-10"><TableRow>
               <TableHead>Member</TableHead><TableHead>Team</TableHead>
               <TableHead className="text-right">Amount</TableHead><TableHead>Status</TableHead>
-              <TableHead>Paid on</TableHead><TableHead>Receipt</TableHead>{isAdmin && <TableHead className="w-12"></TableHead>}
+              <TableHead>Payment</TableHead>
+              <TableHead>Paid on</TableHead><TableHead>Receipt</TableHead><TableHead className="w-24"></TableHead>{isAdmin && <TableHead className="w-12"></TableHead>}
             </TableRow></TableHeader>
             <TableBody>
               {rows.map(r => (
@@ -223,10 +263,15 @@ function ContributionsPage() {
                   <TableCell className="font-medium">{displayName(r)}</TableCell>
                   <TableCell>{r.team}</TableCell>
                   <TableCell className="text-right">
-                    {isAdmin ? (
+                    {isAdmin && !isPaid(r) ? (
                       <Input className="w-28 ml-auto text-right" type="number" defaultValue={r.amount}
                         onBlur={e => Number(e.target.value) !== Number(r.amount) && update.mutate({ id: r.id, v: { amount: Number(e.target.value) } })} />
-                    ) : lkr(Number(r.amount))}
+                    ) : (
+                      <span className="inline-flex items-center gap-1 justify-end">
+                        {isPaid(r) && <Lock className="h-3 w-3 text-muted-foreground" />}
+                        {lkr(Number(r.amount))}
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell>
                     {isAdmin ? (
@@ -236,12 +281,27 @@ function ContributionsPage() {
                       </Select>
                     ) : r.status}
                   </TableCell>
+                  <TableCell>
+                    {isAdmin ? (
+                      <Select value={r.payment_type ?? "Online"} onValueChange={(v) => update.mutate({ id: r.id, v: { payment_type: v } })}>
+                        <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+                        <SelectContent><SelectItem value="Online">Online</SelectItem><SelectItem value="Cash">Cash</SelectItem></SelectContent>
+                      </Select>
+                    ) : (r.payment_type ?? "Online")}
+                  </TableCell>
                   <TableCell className="text-muted-foreground text-sm">{r.paid_at ?? "—"}</TableCell>
                   <TableCell><ReceiptCell contribId={r.id} receipts={cReceipts.filter(x => x.contribution_id === r.id)} isAdmin={isAdmin} /></TableCell>
+                  <TableCell>
+                    {isPaid(r) && (
+                      <Button size="sm" variant="outline" onClick={() => generateReceipt(r)} className="h-7">
+                        <ReceiptIcon className="h-3 w-3 mr-1" />Receipt
+                      </Button>
+                    )}
+                  </TableCell>
                   {isAdmin && <TableCell><Button size="icon" variant="ghost" onClick={() => del.mutate(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>}
                 </TableRow>
               ))}
-              {rows.length === 0 && <TableRow><TableCell colSpan={isAdmin ? 7 : 6} className="text-center text-muted-foreground py-8">No contributions yet.</TableCell></TableRow>}
+              {rows.length === 0 && <TableRow><TableCell colSpan={isAdmin ? 9 : 8} className="text-center text-muted-foreground py-8">No contributions yet.</TableCell></TableRow>}
             </TableBody>
           </Table>
         </CardContent>
@@ -294,7 +354,7 @@ function ReceiptCell({ contribId, receipts, isAdmin }: { contribId: string; rece
 }
 
 function NewDialog({ staff, teams, statuses, onSubmit }: { staff: Staff[]; teams: string[]; statuses: string[]; onSubmit: (v: Partial<Co>) => void }) {
-  const [f, setF] = useState<Partial<Co>>({ staff_id: null, team: teams[0] ?? "General", amount: 0, status: statuses[0] ?? "Pending", note: "" });
+  const [f, setF] = useState<Partial<Co>>({ staff_id: null, team: teams[0] ?? "General", amount: 0, status: statuses[0] ?? "Pending", note: "", payment_type: "Online" });
   return (
     <DialogContent>
       <DialogHeader><DialogTitle>New contribution</DialogTitle></DialogHeader>
@@ -317,6 +377,12 @@ function NewDialog({ staff, teams, statuses, onSubmit }: { staff: Staff[]; teams
             <Select value={f.status} onValueChange={v => setF({ ...f, status: v })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>{statuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div><Label>Payment type</Label>
+            <Select value={f.payment_type ?? "Online"} onValueChange={v => setF({ ...f, payment_type: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="Online">Online</SelectItem><SelectItem value="Cash">Cash</SelectItem></SelectContent>
             </Select>
           </div>
           <div><Label>Note</Label><Input value={f.note ?? ""} onChange={e => setF({ ...f, note: e.target.value })} /></div>

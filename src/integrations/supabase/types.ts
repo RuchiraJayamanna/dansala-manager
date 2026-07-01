@@ -331,6 +331,7 @@ export type Database = {
           member_name: string
           note: string | null
           paid_at: string | null
+          payment_type: string
           staff_id: string | null
           status: string
           team: string
@@ -344,6 +345,7 @@ export type Database = {
           member_name: string
           note?: string | null
           paid_at?: string | null
+          payment_type?: string
           staff_id?: string | null
           status?: string
           team?: string
@@ -357,6 +359,7 @@ export type Database = {
           member_name?: string
           note?: string | null
           paid_at?: string | null
+          payment_type?: string
           staff_id?: string | null
           status?: string
           team?: string
@@ -379,6 +382,50 @@ export type Database = {
           },
         ]
       }
+      event_documents: {
+        Row: {
+          category: string
+          created_at: string
+          event_id: string
+          file_name: string
+          file_path: string
+          id: string
+          mime_type: string | null
+          size_bytes: number | null
+          title: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          event_id: string
+          file_name: string
+          file_path: string
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          title: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          event_id?: string
+          file_name?: string
+          file_path?: string
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_documents_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           agenda_notes: string | null
@@ -387,6 +434,7 @@ export type Database = {
           dansala_type: string | null
           event_date: string | null
           id: string
+          is_public: boolean
           location: string | null
           name: string
           notes: string | null
@@ -404,6 +452,7 @@ export type Database = {
           dansala_type?: string | null
           event_date?: string | null
           id?: string
+          is_public?: boolean
           location?: string | null
           name: string
           notes?: string | null
@@ -421,6 +470,7 @@ export type Database = {
           dansala_type?: string | null
           event_date?: string | null
           id?: string
+          is_public?: boolean
           location?: string | null
           name?: string
           notes?: string | null
@@ -432,6 +482,66 @@ export type Database = {
           year?: number
         }
         Relationships: []
+      }
+      item_checklist: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          item_name: string
+          notes: string | null
+          quantity: number
+          responsible_name: string | null
+          responsible_staff_id: string | null
+          sort_order: number
+          status: string
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          item_name: string
+          notes?: string | null
+          quantity?: number
+          responsible_name?: string | null
+          responsible_staff_id?: string | null
+          sort_order?: number
+          status?: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          item_name?: string
+          notes?: string | null
+          quantity?: number
+          responsible_name?: string | null
+          responsible_staff_id?: string | null
+          sort_order?: number
+          status?: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_checklist_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_checklist_responsible_staff_id_fkey"
+            columns: ["responsible_staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       master_options: {
         Row: {

@@ -215,7 +215,7 @@ function PhaseView({ phase, members, isAdmin, displayName, displayDept, displayC
   if (members.length === 0) return <div className="text-muted-foreground">No members in {phase} yet.</div>;
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 max-h-[calc(100vh-18rem)] overflow-y-auto pr-2">
+    <div className="grid gap-4 md:grid-cols-2 max-h-[calc(100vh-12rem)] overflow-y-auto pr-2">
       {Object.entries(grouped).map(([team, list]) => {
         const key = `${phase}::${team}`;
         return (
