@@ -16,6 +16,7 @@ import { Route as AuthenticatedTeamsRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedSummaryRouteImport } from './routes/_authenticated/summary'
 import { Route as AuthenticatedStaffRouteImport } from './routes/_authenticated/staff'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedItemsRouteImport } from './routes/_authenticated/items'
 import { Route as AuthenticatedEventsRouteImport } from './routes/_authenticated/events'
 import { Route as AuthenticatedDocumentsRouteImport } from './routes/_authenticated/documents'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -57,6 +58,11 @@ const AuthenticatedStaffRoute = AuthenticatedStaffRouteImport.update({
 const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedItemsRoute = AuthenticatedItemsRouteImport.update({
+  id: '/items',
+  path: '/items',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedEventsRoute = AuthenticatedEventsRouteImport.update({
@@ -111,6 +117,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/documents': typeof AuthenticatedDocumentsRoute
   '/events': typeof AuthenticatedEventsRoute
+  '/items': typeof AuthenticatedItemsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/staff': typeof AuthenticatedStaffRoute
   '/summary': typeof AuthenticatedSummaryRoute
@@ -127,6 +134,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/documents': typeof AuthenticatedDocumentsRoute
   '/events': typeof AuthenticatedEventsRoute
+  '/items': typeof AuthenticatedItemsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/staff': typeof AuthenticatedStaffRoute
   '/summary': typeof AuthenticatedSummaryRoute
@@ -145,6 +153,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/documents': typeof AuthenticatedDocumentsRoute
   '/_authenticated/events': typeof AuthenticatedEventsRoute
+  '/_authenticated/items': typeof AuthenticatedItemsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/staff': typeof AuthenticatedStaffRoute
   '/_authenticated/summary': typeof AuthenticatedSummaryRoute
@@ -163,6 +172,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/documents'
     | '/events'
+    | '/items'
     | '/settings'
     | '/staff'
     | '/summary'
@@ -179,6 +189,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/documents'
     | '/events'
+    | '/items'
     | '/settings'
     | '/staff'
     | '/summary'
@@ -196,6 +207,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/documents'
     | '/_authenticated/events'
+    | '/_authenticated/items'
     | '/_authenticated/settings'
     | '/_authenticated/staff'
     | '/_authenticated/summary'
@@ -258,6 +270,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/items': {
+      id: '/_authenticated/items'
+      path: '/items'
+      fullPath: '/items'
+      preLoaderRoute: typeof AuthenticatedItemsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/events': {
@@ -327,6 +346,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedDocumentsRoute: typeof AuthenticatedDocumentsRoute
   AuthenticatedEventsRoute: typeof AuthenticatedEventsRoute
+  AuthenticatedItemsRoute: typeof AuthenticatedItemsRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedStaffRoute: typeof AuthenticatedStaffRoute
   AuthenticatedSummaryRoute: typeof AuthenticatedSummaryRoute
@@ -342,6 +362,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedDocumentsRoute: AuthenticatedDocumentsRoute,
   AuthenticatedEventsRoute: AuthenticatedEventsRoute,
+  AuthenticatedItemsRoute: AuthenticatedItemsRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedStaffRoute: AuthenticatedStaffRoute,
   AuthenticatedSummaryRoute: AuthenticatedSummaryRoute,

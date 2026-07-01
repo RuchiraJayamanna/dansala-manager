@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { Wallet, Users, ListChecks, HandCoins, TrendingDown, TrendingUp, CalendarRange } from "lucide-react";
 import { lkr } from "@/lib/format";
 import { useCurrentEvent, useCurrentEventId } from "@/lib/event-context";
+import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — Dansala Management System" }] }),
@@ -43,6 +44,24 @@ function Dashboard() {
   const variance = (data?.planned ?? 0) - (data?.actual ?? 0);
   const overspend = variance < 0;
 
+  const { data: banners = [] } = useQuery({
+    queryKey: ["dash_banners", eventId],
+    enabled: !!eventId,
+    queryFn: async () => {
+      const { data } = await supabase.from("event_documents" as any).select("*").eq("event_id", eventId!).eq("category", "Banner Design").order("created_at", { ascending: false });
+      return (data ?? []) as any[];
+    },
+  });
+  const [bannerUrl, setBannerUrl] = useState<string | null>(null);
+  useEffect(() => {
+    (async () => {
+      const latest = banners[0];
+      if (!latest) { setBannerUrl(null); return; }
+      const { data } = await supabase.storage.from("event-documents").createSignedUrl(latest.file_path, 60 * 60);
+      setBannerUrl(data?.signedUrl ?? null);
+    })();
+  }, [banners]);
+
   if (!event) return <NoEvent />;
 
   return (
@@ -52,6 +71,15 @@ function Dashboard() {
         <h1 className="text-3xl font-bold tracking-tight mt-1">{event.name}</h1>
         <p className="text-muted-foreground mt-1">Real-time snapshot of budget, teams, checklist and contributions.</p>
       </header>
+
+      {bannerUrl && (
+        <Card className="overflow-hidden">
+          <div className="text-xs uppercase tracking-wide text-muted-foreground px-4 pt-3">Event banner</div>
+          <div className="p-4">
+            <img src={bannerUrl} alt="Event banner" className="w-full max-h-96 object-contain rounded-lg bg-muted" />
+          </div>
+        </Card>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={Wallet} label="Planned Budget" value={lkr(data?.planned ?? 0)} hint="Across all line items" />
