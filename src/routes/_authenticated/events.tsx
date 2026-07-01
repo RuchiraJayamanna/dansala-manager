@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Check, Copy } from "lucide-react";
+import { Plus, Pencil, Trash2, Check, Copy, Eye, EyeOff } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
@@ -36,7 +37,7 @@ function EventsPage() {
         const { error } = await supabase.from("events").update(v as any).eq("id", editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("events").insert({ name: v.name || "", year: v.year || new Date().getFullYear(), location: v.location, dansala_type: v.dansala_type, event_date: v.event_date || null, status: v.status || "Planning", notes: v.notes });
+        const { error } = await supabase.from("events").insert({ name: v.name || "", year: v.year || new Date().getFullYear(), location: v.location, dansala_type: v.dansala_type, event_date: v.event_date || null, status: v.status || "Planning", notes: v.notes, is_public: v.is_public ?? false } as any);
         if (error) throw error;
       }
     },
@@ -55,7 +56,8 @@ function EventsPage() {
       const { data: created, error } = await supabase.from("events").insert({
         name: newName, year: src.year, location: src.location, dansala_type: src.dansala_type,
         event_date: null, status: "Planning", notes: src.notes, agenda_notes: src.agenda_notes ?? null,
-      }).select().single();
+        is_public: false,
+      } as any).select().single();
       if (error) throw error;
       const newId = created.id as string;
       const stripIds = (rows: any[]) => rows.map(({ id, created_at, updated_at, ...rest }) => ({ ...rest, event_id: newId }));
@@ -105,7 +107,12 @@ function EventsPage() {
                     <div className="text-xs text-muted-foreground">{e.dansala_type ?? "Dansala"} · {e.year}</div>
                     <div className="text-lg font-semibold">{e.name}</div>
                   </div>
-                  <span className="text-xs px-2 py-1 rounded bg-muted">{e.status}</span>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="text-xs px-2 py-1 rounded bg-muted">{e.status}</span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded inline-flex items-center gap-1 ${e.is_public ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                      {e.is_public ? <><Eye className="h-3 w-3" />Public</> : <><EyeOff className="h-3 w-3" />Private</>}
+                    </span>
+                  </div>
                 </div>
                 <div className="text-sm text-muted-foreground">{e.location ?? "—"} · {e.event_date ?? "Date TBD"}</div>
                 {e.notes && <p className="text-sm">{e.notes}</p>}
@@ -139,7 +146,7 @@ function EventsPage() {
 }
 
 function EventDialog({ initial, types, statuses, onSubmit }: { initial: Event | null; types: string[]; statuses: string[]; onSubmit: (v: Partial<Event>) => void }) {
-  const [f, setF] = useState<Partial<Event>>(initial ?? { name: "", year: new Date().getFullYear(), location: "", dansala_type: types[0] ?? "", event_date: "", status: statuses[0] ?? "Planning", notes: "" });
+  const [f, setF] = useState<Partial<Event>>(initial ?? { name: "", year: new Date().getFullYear(), location: "", dansala_type: types[0] ?? "", event_date: "", status: statuses[0] ?? "Planning", notes: "", is_public: false });
   return (
     <DialogContent>
       <DialogHeader><DialogTitle>{initial ? "Edit" : "New"} event</DialogTitle></DialogHeader>
@@ -163,6 +170,10 @@ function EventDialog({ initial, types, statuses, onSubmit }: { initial: Event | 
           </div>
         </div>
         <div><Label>Notes</Label><Input value={f.notes ?? ""} onChange={e => setF({ ...f, notes: e.target.value })} /></div>
+        <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <Checkbox checked={!!f.is_public} onCheckedChange={(v) => setF({ ...f, is_public: !!v })} />
+          <span>Public — visible to everyone (unchecked = only admins can see this event)</span>
+        </label>
         <DialogFooter><Button type="submit">Save</Button></DialogFooter>
       </form>
     </DialogContent>
