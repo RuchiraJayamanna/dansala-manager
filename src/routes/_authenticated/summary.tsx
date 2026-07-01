@@ -66,7 +66,21 @@ function SummaryPage() {
   const pendingC = contrib.filter((c: any) => !["Paid", "Completed"].includes(c.status)).reduce((s, c: any) => s + Number(c.amount || 0), 0);
   const officeFunded = Number((event as any)?.office_contribution ?? 0);
   const totalAvailable = collected + officeFunded;
+  const inHand = officeFunded + collected - actual;
   const doneTasks = tasks.filter((t: any) => t.status === "Done").length;
+
+  const { data: eventDocs = [] } = useQuery({
+    queryKey: ["sum_event_docs", id],
+    enabled: !!id,
+    queryFn: async () => {
+      const { data } = await supabase.from("event_documents" as any).select("*").eq("event_id", id!).order("category");
+      const withUrls = await Promise.all((data ?? []).map(async (d: any) => {
+        const { data: s } = await supabase.storage.from("event-documents").createSignedUrl(d.file_path, 60 * 60 * 24);
+        return { ...d, url: s?.signedUrl ?? "" };
+      }));
+      return withUrls;
+    },
+  });
 
   const fileBase = (event?.name ?? "Event").replace(/\s+/g, "_");
 
@@ -177,7 +191,9 @@ function SummaryPage() {
         { name: "Checklist Notes", rows: [["Important notes"], ...checklistBullets.map(b => [`• ${b}`])] },
         { name: "Contributions", rows: [["Member", "Team", "Amount", "Status", "Paid on", "Note"],
           ...contrib.map((c: any) => [contribName(c), c.team, Number(c.amount), c.status, c.paid_at, c.note]),
-          [], ["Collected", "", collected], ["Pending", "", pendingC], ["Office funded", "", officeFunded], ["TOTAL AVAILABLE", "", totalAvailable]] },
+          [], ["Collected", "", collected], ["Pending", "", pendingC], ["Office funded", "", officeFunded], ["TOTAL AVAILABLE", "", totalAvailable], ["Budget actual", "", actual], ["IN HAND", "", inHand]] },
+        { name: "Event Documents", rows: [["Category", "Title", "File", "Link"],
+          ...(eventDocs as any[]).map(d => [d.category, d.title, d.file_name, d.url])] },
       ]);
     } else {
       const teamTables: any[] = [];
@@ -216,8 +232,17 @@ function SummaryPage() {
           body: contrib.map((c: any) => [contribName(c), c.team, lkr(Number(c.amount)), c.status]),
           foot: [["", "Collected", lkr(collected), `Pending ${lkr(pendingC)}`]] },
         { title: "Funding breakdown", head: ["Source", "Amount"],
-          body: [["Collected from staff", lkr(collected)], ["Office funded", lkr(officeFunded)]],
-          foot: [["TOTAL AVAILABLE", lkr(totalAvailable)]] },
+          body: [["Collected from staff", lkr(collected)], ["Office funded", lkr(officeFunded)], ["Total available", lkr(totalAvailable)], ["Less: Budget actual spend", `- ${lkr(actual)}`]],
+          foot: [["IN HAND", lkr(inHand)]] },
+        ...(((eventDocs as any[]).length) ? (() => {
+          const grouped = (eventDocs as any[]).reduce((a: Record<string, any[]>, d) => { (a[d.category] ??= []).push(d); return a; }, {});
+          return Object.entries(grouped).map(([cat, list], idx) => ({
+            title: `Documents — ${cat}`,
+            newPage: idx === 0,
+            head: ["Title", "File", "Link"],
+            body: (list as any[]).map(d => [d.title, d.file_name, d.url]),
+          }));
+        })() : []),
       ], `${members.length} members · ${tasks.length} tasks · ${agenda.length} agenda items`);
     }
   };
@@ -237,10 +262,11 @@ function SummaryPage() {
           onXlsx={() => exportComplete("xlsx")} onPdf={() => exportComplete("pdf")} />
       </div>
 
-      <div className="grid gap-3 md:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-5">
         <Stat label="Planned budget" value={lkr(planned)} />
         <Stat label="Actual spend" value={lkr(actual)} tone={actual > planned ? "neg" : "pos"} />
         <Stat label="Collected" value={lkr(collected)} tone="pos" />
+        <Stat label="In hand" value={lkr(inHand)} tone={inHand < 0 ? "neg" : "pos"} />
         <Stat label="Tasks done" value={`${doneTasks} / ${tasks.length}`} />
       </div>
 
