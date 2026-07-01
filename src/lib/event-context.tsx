@@ -16,6 +16,7 @@ export type Event = {
   team_notes?: Record<string, string> | null;
   team_venues?: Record<string, string> | null;
   office_contribution?: number | null;
+  is_public?: boolean;
 };
 
 type Ctx = {
