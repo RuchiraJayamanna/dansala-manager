@@ -210,7 +210,7 @@ function ContributionsPage() {
       </div>
 
       <Card>
-        <CardContent className="p-0 max-h-[calc(100vh-26rem)] overflow-y-auto">
+        <CardContent className="p-0 max-h-[calc(100vh-16rem)] overflow-y-auto">
           <Table>
             <TableHeader className="sticky top-0 bg-background z-10"><TableRow>
               <TableHead>Member</TableHead><TableHead>Team</TableHead>

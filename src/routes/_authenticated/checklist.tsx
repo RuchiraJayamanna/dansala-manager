@@ -189,7 +189,7 @@ function ChecklistPage() {
       </Card>
 
       <Card>
-        <CardContent className="p-0 divide-y max-h-[calc(100vh-22rem)] overflow-y-auto">
+        <CardContent className="p-0 divide-y max-h-[calc(100vh-14rem)] overflow-y-auto">
           {items.map(i => (
             <div key={i.id} className="p-4 flex items-start gap-4 flex-wrap">
               <div className="flex-1 min-w-[220px] space-y-1">
