@@ -219,14 +219,14 @@ function SummaryPage() {
       }
       // Mark the first team table to start on a new page
       if (teamTables.length) teamTables[0].newPage = true;
-      exportPdf(`${fileBase}_Complete_Summary`, `${event?.name} — Complete Summary`, [
+      const completeTables = [
         { title: "Budget by Category", head: ["Category", "Planned", "Actual", "Variance"],
           body: Object.entries(byCat).map(([c, v]) => [c, lkr(v.p), lkr(v.a), lkr(v.p - v.a)]),
           foot: [["TOTAL", lkr(planned), lkr(actual), lkr(planned - actual)]] },
         ...((receipts as any[]).length ? [{
           title: "Receipts & supporting documents",
-          head: ["Category", "Item", "File", "Link"],
-          body: (receipts as any[]).map(r => { const it = itemMap.get(r.budget_item_id); return [it?.category ?? "—", it?.item ?? "—", r.file_name, r.url]; }),
+          head: ["Category", "Item", "File"],
+          body: (receipts as any[]).map(r => { const it = itemMap.get(r.budget_item_id); return [it?.category ?? "—", it?.item ?? "—", r.file_name]; }),
         }] : []),
         { title: "Event Agenda", newPage: true, notes: agendaBullets,
           head: ["Start", "End", "Activity", "Location", "Responsible"],
@@ -246,11 +246,26 @@ function SummaryPage() {
           return Object.entries(grouped).map(([cat, list], idx) => ({
             title: `Documents — ${cat}`,
             newPage: idx === 0,
-            head: ["Title", "File", "Link"],
-            body: (list as any[]).map(d => [d.title, d.file_name, d.url]),
+            head: ["Title", "File"],
+            body: (list as any[]).map(d => [d.title, d.file_name]),
           }));
         })() : []),
-      ], `${members.length} members · ${tasks.length} tasks · ${agenda.length} agenda items`);
+      ];
+      const subtitle = `${members.length} members · ${tasks.length} tasks · ${agenda.length} agenda items`;
+      const atts: PdfAttachment[] = [
+        ...(receipts as any[]).map(r => {
+          const it = itemMap.get(r.budget_item_id);
+          return { section: `Receipt · ${it?.category ?? ""} — ${it?.item ?? ""}`.trim(), title: r.file_name, url: r.url, fileName: r.file_name };
+        }),
+        ...(eventDocs as any[]).map(d => ({
+          section: `Document · ${d.category}`, title: d.title || d.file_name, url: d.url, fileName: d.file_name, mime: d.mime_type,
+        })),
+      ];
+      if (atts.length) {
+        void exportPdfWithAttachments(`${fileBase}_Complete_Summary`, `${event?.name} — Complete Summary`, completeTables, atts, subtitle);
+      } else {
+        exportPdf(`${fileBase}_Complete_Summary`, `${event?.name} — Complete Summary`, completeTables, subtitle);
+      }
     }
   };
 
