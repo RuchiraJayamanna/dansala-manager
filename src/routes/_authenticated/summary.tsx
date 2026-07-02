@@ -115,7 +115,7 @@ function SummaryPage() {
           })] },
       ]);
     } else {
-      exportPdf(`${fileBase}_Budget_Full`, `${event?.name} — Budget Report`, [
+      const tables = [
         { title: "Summary by Category", head: ["Category", "Planned", "Actual", "Variance"],
           body: Object.entries(byCat).map(([c, v]) => [c, lkr(v.p), lkr(v.a), lkr(v.p - v.a)]),
           foot: [["TOTAL", lkr(planned), lkr(actual), lkr(planned - actual)]] },
@@ -124,27 +124,18 @@ function SummaryPage() {
         ...((receipts as any[]).length ? [{
           title: "Receipts & supporting documents",
           head: ["Category", "Item", "File"],
-          body: (receipts as any[]).map(r => {
-            const it = itemMap.get(r.budget_item_id);
-            return [it?.category ?? "—", it?.item ?? "—", r.file_name];
-          }),
+          body: (receipts as any[]).map(r => { const it = itemMap.get(r.budget_item_id); return [it?.category ?? "—", it?.item ?? "—", r.file_name]; }),
         }] : []),
-      ], `Planned ${lkr(planned)} · Actual ${lkr(actual)} · Variance ${lkr(planned - actual)}`);
+      ];
+      const subtitle = `Planned ${lkr(planned)} · Actual ${lkr(actual)} · Variance ${lkr(planned - actual)}`;
       if ((receipts as any[]).length) {
         const atts: PdfAttachment[] = (receipts as any[]).map(r => {
           const it = itemMap.get(r.budget_item_id);
           return { section: `Receipt · ${it?.category ?? ""} — ${it?.item ?? ""}`.trim(), title: r.file_name, url: r.url, fileName: r.file_name };
         });
-        // Regenerate with attachments appended
-        void exportPdfWithAttachments(`${fileBase}_Budget_Full`, `${event?.name} — Budget Report`, [
-          { title: "Summary by Category", head: ["Category", "Planned", "Actual", "Variance"],
-            body: Object.entries(byCat).map(([c, v]) => [c, lkr(v.p), lkr(v.a), lkr(v.p - v.a)]),
-            foot: [["TOTAL", lkr(planned), lkr(actual), lkr(planned - actual)]] },
-          { title: "All line items", head: ["Category", "Item", "Planned", "Actual"],
-            body: budget.map((i: any) => [i.category, i.item, lkr(Number(i.planned_amount)), lkr(Number(i.actual_amount))]) },
-          { title: "Receipts & supporting documents", head: ["Category", "Item", "File"],
-            body: (receipts as any[]).map(r => { const it = itemMap.get(r.budget_item_id); return [it?.category ?? "—", it?.item ?? "—", r.file_name]; }) },
-        ], atts, `Planned ${lkr(planned)} · Actual ${lkr(actual)} · Variance ${lkr(planned - actual)}`);
+        void exportPdfWithAttachments(`${fileBase}_Budget_Full`, `${event?.name} — Budget Report`, tables, atts, subtitle);
+      } else {
+        exportPdf(`${fileBase}_Budget_Full`, `${event?.name} — Budget Report`, tables, subtitle);
       }
     }
   };
