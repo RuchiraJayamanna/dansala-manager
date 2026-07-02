@@ -1,6 +1,7 @@
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
 /** Build a SUM() formula cell over a column range, 1-indexed (Excel) rows. */
 export const sumF = (col: string, startRow: number, endRow: number) =>
@@ -37,6 +38,112 @@ export type PdfTable = {
 };
 
 export function exportPdf(filename: string, title: string, tables: PdfTable[], subtitle?: string) {
+  const doc = buildPdf(title, tables, subtitle);
+  doc.save(filename.endsWith(".pdf") ? filename : `${filename}.pdf`);
+}
+
+export type PdfAttachment = {
+  /** Section label rendered as an intro page before the file (e.g. "Receipts · Rice"). */
+  section: string;
+  /** File title shown under the section label. */
+  title: string;
+  /** URL to fetch the file bytes from. */
+  url: string;
+  /** Optional mime type; auto-detected from response when omitted. */
+  mime?: string;
+  /** Original file name (used to detect type from extension when mime missing). */
+  fileName?: string;
+};
+
+/**
+ * Build the jsPDF report, then append each attachment inline:
+ * - PDFs are copied page-for-page.
+ * - Images (jpg/png) are embedded on a full page.
+ * - Anything else gets a small placeholder page noting the file type.
+ */
+export async function exportPdfWithAttachments(
+  filename: string,
+  title: string,
+  tables: PdfTable[],
+  attachments: PdfAttachment[],
+  subtitle?: string,
+) {
+  const doc = buildPdf(title, tables, subtitle);
+  const baseBytes = doc.output("arraybuffer");
+  const merged = await PDFDocument.load(baseBytes);
+  const helv = await merged.embedFont(StandardFonts.HelveticaBold);
+  const helvR = await merged.embedFont(StandardFonts.Helvetica);
+
+  for (const att of attachments) {
+    try {
+      const res = await fetch(att.url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      const contentType = (att.mime || res.headers.get("content-type") || "").toLowerCase();
+      const nameLower = (att.fileName || att.url).toLowerCase();
+      const isPdf = contentType.includes("pdf") || nameLower.endsWith(".pdf");
+      const isJpg = contentType.includes("jpeg") || /\.(jpe?g)(\?|$)/.test(nameLower);
+      const isPng = contentType.includes("png") || /\.png(\?|$)/.test(nameLower);
+
+      // Cover page for this attachment
+      addCoverPage(merged, helv, helvR, att.section, att.title);
+
+      if (isPdf) {
+        const src = await PDFDocument.load(bytes, { ignoreEncryption: true });
+        const pages = await merged.copyPages(src, src.getPageIndices());
+        pages.forEach(p => merged.addPage(p));
+      } else if (isJpg || isPng) {
+        const img = isPng ? await merged.embedPng(bytes) : await merged.embedJpg(bytes);
+        const page = merged.addPage([595.28, 841.89]); // A4
+        const margin = 40;
+        const maxW = page.getWidth() - margin * 2;
+        const maxH = page.getHeight() - margin * 2 - 40;
+        const scale = Math.min(maxW / img.width, maxH / img.height, 1);
+        const w = img.width * scale;
+        const h = img.height * scale;
+        page.drawImage(img, {
+          x: (page.getWidth() - w) / 2,
+          y: (page.getHeight() - h) / 2 - 20,
+          width: w,
+          height: h,
+        });
+      } else {
+        const page = merged.addPage([595.28, 841.89]);
+        page.drawText(`Attached file: ${att.fileName || att.title}`, {
+          x: 40, y: 780, size: 12, font: helv, color: rgb(0, 0, 0),
+        });
+        page.drawText("Preview not available for this file type.", {
+          x: 40, y: 760, size: 10, font: helvR, color: rgb(0.4, 0.4, 0.4),
+        });
+      }
+    } catch (e) {
+      addCoverPage(merged, helv, helvR, att.section, `${att.title} — failed to embed`);
+    }
+  }
+
+  const out = await merged.save();
+  const blob = new Blob([out as BlobPart], { type: "application/pdf" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename.endsWith(".pdf") ? filename : `${filename}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function addCoverPage(pdf: PDFDocument, bold: any, regular: any, section: string, title: string) {
+  const page = pdf.addPage([595.28, 841.89]);
+  page.drawText(section, { x: 40, y: 780, size: 10, font: regular, color: rgb(0.4, 0.4, 0.5) });
+  page.drawText(title, { x: 40, y: 755, size: 18, font: bold, color: rgb(0.06, 0.3, 0.46) });
+  page.drawLine({
+    start: { x: 40, y: 740 }, end: { x: 555, y: 740 },
+    thickness: 1, color: rgb(0.85, 0.87, 0.9),
+  });
+}
+
+function buildPdf(title: string, tables: PdfTable[], subtitle?: string): jsPDF {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
   doc.setFontSize(16);
@@ -103,5 +210,5 @@ export function exportPdf(filename: string, title: string, tables: PdfTable[], s
       startY = 50;
     }
   }
-  doc.save(filename.endsWith(".pdf") ? filename : `${filename}.pdf`);
+  return doc;
 }
