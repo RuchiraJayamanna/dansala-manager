@@ -1,14 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileSpreadsheet, FileText } from "lucide-react";
+import { FileSpreadsheet, FileText, Sparkles, Save } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { lkr } from "@/lib/format";
 import { exportXlsx, exportPdf, exportPdfWithAttachments, type PdfAttachment } from "@/lib/export";
 import { useCurrentEvent, useCurrentEventId } from "@/lib/event-context";
 import { notesToBullets } from "@/components/BulletNotes";
+import { useIsAdmin } from "@/lib/use-is-admin";
+import { generateEventAnalysis } from "@/lib/ai-analysis.functions";
 
 export const Route = createFileRoute("/_authenticated/summary")({
   head: () => ({ meta: [{ title: "Summary — Dansala Management System" }] }),
@@ -18,6 +24,35 @@ export const Route = createFileRoute("/_authenticated/summary")({
 function SummaryPage() {
   const event = useCurrentEvent();
   const id = useCurrentEventId();
+  const { isAdmin } = useIsAdmin();
+  const qc = useQueryClient();
+  const generateFn = useServerFn(generateEventAnalysis);
+  const [analysis, setAnalysis] = useState<string>("");
+  const [generating, setGenerating] = useState(false);
+  useEffect(() => { setAnalysis(((event as any)?.post_event_analysis ?? "") as string); }, [event?.id, (event as any)?.post_event_analysis]);
+
+  const saveAnalysis = useMutation({
+    mutationFn: async (text: string) => {
+      if (!id) return;
+      const { error } = await supabase.from("events").update({ post_event_analysis: text } as any).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["events"] }); toast.success("Analysis saved"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const runGenerate = async () => {
+    if (!id) return;
+    setGenerating(true);
+    try {
+      const { analysis: out } = await generateFn({ data: { event_id: id } });
+      setAnalysis(out);
+      toast.success("Draft generated — review and save");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to generate");
+    } finally { setGenerating(false); }
+  };
+
   const { data: budget = [] } = useQuery({ queryKey: ["sum_budget", id], enabled: !!id, queryFn: async () => (await supabase.from("budget_items").select("*").eq("event_id", id!).order("category").order("sort_order")).data ?? [] });
   const { data: members = [] } = useQuery({ queryKey: ["sum_members", id], enabled: !!id, queryFn: async () => (await supabase.from("team_members").select("*").eq("event_id", id!)).data ?? [] });
   const { data: tasks = [] } = useQuery({ queryKey: ["sum_tasks", id], enabled: !!id, queryFn: async () => (await supabase.from("checklist_items").select("*").eq("event_id", id!)).data ?? [] });
@@ -184,6 +219,7 @@ function SummaryPage() {
       }
       exportXlsx(`${fileBase}_Complete_Summary`, [
         { name: "Event Info", rows: [["Event"], ["Name", event?.name ?? ""], ["Year", event?.year ?? ""], ["Location", event?.location ?? ""], ["Type", event?.dansala_type ?? ""], ["Date", event?.event_date ?? ""], ["Status", event?.status ?? ""]] },
+        ...((event as any)?.post_event_analysis ? [{ name: "Post-Event Analysis", rows: [["Post-Event Analysis"], [], ...String((event as any).post_event_analysis).split(/\r?\n/).map(l => [l])] }] : []),
         { name: "Budget Summary", rows: [["Category", "Planned", "Actual", "Variance"], ...Object.entries(byCat).map(([c, v]) => [c, v.p, v.a, v.p - v.a]), [], ["TOTAL", planned, actual, planned - actual]] },
         { name: "Budget Detail", rows: [["Category", "Item", "Qty", "Unit", "Rate", "Planned", "Actual", "Note"],
           ...budget.map((i: any) => [i.category, i.item, i.planned_qty ?? "", i.unit ?? "", i.planned_unit_price ?? "", Number(i.planned_amount), Number(i.actual_amount), i.actual_note ?? ""])] },
@@ -220,6 +256,11 @@ function SummaryPage() {
       // Mark the first team table to start on a new page
       if (teamTables.length) teamTables[0].newPage = true;
       const completeTables = [
+        ...(((event as any)?.post_event_analysis) ? [{
+          title: "Post-Event Analysis", newPage: true,
+          head: [], body: [],
+          prose: String((event as any).post_event_analysis),
+        }] : []),
         { title: "Budget by Category", head: ["Category", "Planned", "Actual", "Variance"],
           body: Object.entries(byCat).map(([c, v]) => [c, lkr(v.p), lkr(v.a), lkr(v.p - v.a)]),
           foot: [["TOTAL", lkr(planned), lkr(actual), lkr(planned - actual)]] },
@@ -308,6 +349,36 @@ function SummaryPage() {
             })}
             {Object.keys(byCat).length === 0 && <div className="text-muted-foreground text-sm">No budget items yet.</div>}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <CardTitle className="text-base">Post-Event Analysis</CardTitle>
+          {isAdmin && (
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={runGenerate} disabled={generating}>
+                <Sparkles className="h-4 w-4 mr-2" />{generating ? "Analysing…" : "Generate with AI"}
+              </Button>
+              <Button size="sm" onClick={() => saveAnalysis.mutate(analysis)} disabled={saveAnalysis.isPending}>
+                <Save className="h-4 w-4 mr-2" />Save
+              </Button>
+            </div>
+          )}
+        </CardHeader>
+        <CardContent>
+          <p className="text-xs text-muted-foreground mb-2">
+            A written review of the event — what went well, what to improve, and suggestions for next time.
+            {isAdmin ? " Editable by admins. Use Markdown (## headings, - bullets)." : " Read-only."}
+          </p>
+          {isAdmin ? (
+            <Textarea value={analysis} onChange={(e) => setAnalysis(e.target.value)} rows={16}
+              placeholder="Click 'Generate with AI' for a draft based on the current event data, then edit as needed." />
+          ) : (
+            analysis
+              ? <pre className="whitespace-pre-wrap text-sm font-sans leading-relaxed">{analysis}</pre>
+              : <div className="text-sm text-muted-foreground">No post-event analysis yet.</div>
+          )}
         </CardContent>
       </Card>
     </div>

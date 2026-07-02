@@ -35,6 +35,8 @@ export type PdfTable = {
   foot?: (string | number)[][];
   notes?: string[];
   newPage?: boolean;
+  /** Optional free-form prose rendered instead of a table (used for narrative sections). */
+  prose?: string;
 };
 
 export function exportPdf(filename: string, title: string, tables: PdfTable[], subtitle?: string) {
@@ -192,6 +194,41 @@ function buildPdf(title: string, tables: PdfTable[], subtitle?: string): jsPDF {
       doc.setTextColor(0);
       doc.setFont("helvetica", "normal");
       startY += 2;
+    }
+    if (t.prose) {
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(30);
+      startY += 6;
+      const paragraphs = t.prose.split(/\r?\n/);
+      for (const raw of paragraphs) {
+        const line = raw.trimEnd();
+        // Simple markdown-ish styling: ## heading, - bullet
+        if (/^##\s+/.test(line)) {
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(11);
+          const text = line.replace(/^##\s+/, "");
+          if (startY > doc.internal.pageSize.getHeight() - 60) { doc.addPage(); startY = 50; }
+          startY += 6;
+          doc.text(text, 40, startY);
+          startY += 14;
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(10);
+          continue;
+        }
+        const isBullet = /^[-*•]\s+/.test(line);
+        const text = isBullet ? line.replace(/^[-*•]\s+/, "") : line;
+        if (!text) { startY += 6; continue; }
+        const wrapped = doc.splitTextToSize((isBullet ? "• " : "") + text, pageW - 100) as string[];
+        for (const l of wrapped) {
+          if (startY > doc.internal.pageSize.getHeight() - 60) { doc.addPage(); startY = 50; }
+          doc.text(l, isBullet ? 50 : 40, startY);
+          startY += 13;
+        }
+      }
+      doc.setTextColor(0);
+      startY += 12;
+      continue;
     }
     autoTable(doc, {
       startY: startY + 4,

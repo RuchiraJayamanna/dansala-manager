@@ -439,6 +439,7 @@ export type Database = {
           name: string
           notes: string | null
           office_contribution: number
+          post_event_analysis: string | null
           status: string
           team_notes: Json
           team_venues: Json
@@ -457,6 +458,7 @@ export type Database = {
           name: string
           notes?: string | null
           office_contribution?: number
+          post_event_analysis?: string | null
           status?: string
           team_notes?: Json
           team_venues?: Json
@@ -475,6 +477,7 @@ export type Database = {
           name?: string
           notes?: string | null
           office_contribution?: number
+          post_event_analysis?: string | null
           status?: string
           team_notes?: Json
           team_venues?: Json
