@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { FileSpreadsheet, FileText } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { lkr } from "@/lib/format";
-import { exportXlsx, exportPdf } from "@/lib/export";
+import { exportXlsx, exportPdf, exportPdfWithAttachments, type PdfAttachment } from "@/lib/export";
 import { useCurrentEvent, useCurrentEventId } from "@/lib/event-context";
 import { notesToBullets } from "@/components/BulletNotes";
 
@@ -123,13 +123,29 @@ function SummaryPage() {
           body: budget.map((i: any) => [i.category, i.item, lkr(Number(i.planned_amount)), lkr(Number(i.actual_amount))]) },
         ...((receipts as any[]).length ? [{
           title: "Receipts & supporting documents",
-          head: ["Category", "Item", "File", "Link"],
+          head: ["Category", "Item", "File"],
           body: (receipts as any[]).map(r => {
             const it = itemMap.get(r.budget_item_id);
-            return [it?.category ?? "—", it?.item ?? "—", r.file_name, r.url];
+            return [it?.category ?? "—", it?.item ?? "—", r.file_name];
           }),
         }] : []),
       ], `Planned ${lkr(planned)} · Actual ${lkr(actual)} · Variance ${lkr(planned - actual)}`);
+      if ((receipts as any[]).length) {
+        const atts: PdfAttachment[] = (receipts as any[]).map(r => {
+          const it = itemMap.get(r.budget_item_id);
+          return { section: `Receipt · ${it?.category ?? ""} — ${it?.item ?? ""}`.trim(), title: r.file_name, url: r.url, fileName: r.file_name };
+        });
+        // Regenerate with attachments appended
+        void exportPdfWithAttachments(`${fileBase}_Budget_Full`, `${event?.name} — Budget Report`, [
+          { title: "Summary by Category", head: ["Category", "Planned", "Actual", "Variance"],
+            body: Object.entries(byCat).map(([c, v]) => [c, lkr(v.p), lkr(v.a), lkr(v.p - v.a)]),
+            foot: [["TOTAL", lkr(planned), lkr(actual), lkr(planned - actual)]] },
+          { title: "All line items", head: ["Category", "Item", "Planned", "Actual"],
+            body: budget.map((i: any) => [i.category, i.item, lkr(Number(i.planned_amount)), lkr(Number(i.actual_amount))]) },
+          { title: "Receipts & supporting documents", head: ["Category", "Item", "File"],
+            body: (receipts as any[]).map(r => { const it = itemMap.get(r.budget_item_id); return [it?.category ?? "—", it?.item ?? "—", r.file_name]; }) },
+        ], atts, `Planned ${lkr(planned)} · Actual ${lkr(actual)} · Variance ${lkr(planned - actual)}`);
+      }
     }
   };
 
