@@ -24,6 +24,35 @@ export const Route = createFileRoute("/_authenticated/summary")({
 function SummaryPage() {
   const event = useCurrentEvent();
   const id = useCurrentEventId();
+  const { isAdmin } = useIsAdmin();
+  const qc = useQueryClient();
+  const generateFn = useServerFn(generateEventAnalysis);
+  const [analysis, setAnalysis] = useState<string>("");
+  const [generating, setGenerating] = useState(false);
+  useEffect(() => { setAnalysis(((event as any)?.post_event_analysis ?? "") as string); }, [event?.id, (event as any)?.post_event_analysis]);
+
+  const saveAnalysis = useMutation({
+    mutationFn: async (text: string) => {
+      if (!id) return;
+      const { error } = await supabase.from("events").update({ post_event_analysis: text } as any).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["events"] }); toast.success("Analysis saved"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const runGenerate = async () => {
+    if (!id) return;
+    setGenerating(true);
+    try {
+      const { analysis: out } = await generateFn({ data: { event_id: id } });
+      setAnalysis(out);
+      toast.success("Draft generated — review and save");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to generate");
+    } finally { setGenerating(false); }
+  };
+
   const { data: budget = [] } = useQuery({ queryKey: ["sum_budget", id], enabled: !!id, queryFn: async () => (await supabase.from("budget_items").select("*").eq("event_id", id!).order("category").order("sort_order")).data ?? [] });
   const { data: members = [] } = useQuery({ queryKey: ["sum_members", id], enabled: !!id, queryFn: async () => (await supabase.from("team_members").select("*").eq("event_id", id!)).data ?? [] });
   const { data: tasks = [] } = useQuery({ queryKey: ["sum_tasks", id], enabled: !!id, queryFn: async () => (await supabase.from("checklist_items").select("*").eq("event_id", id!)).data ?? [] });
