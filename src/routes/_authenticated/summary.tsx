@@ -190,6 +190,7 @@ function SummaryPage() {
       }
       exportXlsx(`${fileBase}_Complete_Summary`, [
         { name: "Event Info", rows: [["Event"], ["Name", event?.name ?? ""], ["Year", event?.year ?? ""], ["Location", event?.location ?? ""], ["Type", event?.dansala_type ?? ""], ["Date", event?.event_date ?? ""], ["Status", event?.status ?? ""]] },
+        ...((event as any)?.post_event_analysis ? [{ name: "Post-Event Analysis", rows: [["Post-Event Analysis"], [], ...String((event as any).post_event_analysis).split(/\r?\n/).map(l => [l])] }] : []),
         { name: "Budget Summary", rows: [["Category", "Planned", "Actual", "Variance"], ...Object.entries(byCat).map(([c, v]) => [c, v.p, v.a, v.p - v.a]), [], ["TOTAL", planned, actual, planned - actual]] },
         { name: "Budget Detail", rows: [["Category", "Item", "Qty", "Unit", "Rate", "Planned", "Actual", "Note"],
           ...budget.map((i: any) => [i.category, i.item, i.planned_qty ?? "", i.unit ?? "", i.planned_unit_price ?? "", Number(i.planned_amount), Number(i.actual_amount), i.actual_note ?? ""])] },
