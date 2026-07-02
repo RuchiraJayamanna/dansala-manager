@@ -35,6 +35,8 @@ export type PdfTable = {
   foot?: (string | number)[][];
   notes?: string[];
   newPage?: boolean;
+  /** Optional free-form prose rendered instead of a table (used for narrative sections). */
+  prose?: string;
 };
 
 export function exportPdf(filename: string, title: string, tables: PdfTable[], subtitle?: string) {
