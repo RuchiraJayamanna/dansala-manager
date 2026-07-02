@@ -1,14 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileSpreadsheet, FileText } from "lucide-react";
+import { FileSpreadsheet, FileText, Sparkles, Save } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { lkr } from "@/lib/format";
 import { exportXlsx, exportPdf, exportPdfWithAttachments, type PdfAttachment } from "@/lib/export";
 import { useCurrentEvent, useCurrentEventId } from "@/lib/event-context";
 import { notesToBullets } from "@/components/BulletNotes";
+import { useIsAdmin } from "@/lib/use-is-admin";
+import { generateEventAnalysis } from "@/lib/ai-analysis.functions";
 
 export const Route = createFileRoute("/_authenticated/summary")({
   head: () => ({ meta: [{ title: "Summary — Dansala Management System" }] }),
