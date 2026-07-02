@@ -351,6 +351,36 @@ function SummaryPage() {
           </div>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <CardTitle className="text-base">Post-Event Analysis</CardTitle>
+          {isAdmin && (
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={runGenerate} disabled={generating}>
+                <Sparkles className="h-4 w-4 mr-2" />{generating ? "Analysing…" : "Generate with AI"}
+              </Button>
+              <Button size="sm" onClick={() => saveAnalysis.mutate(analysis)} disabled={saveAnalysis.isPending}>
+                <Save className="h-4 w-4 mr-2" />Save
+              </Button>
+            </div>
+          )}
+        </CardHeader>
+        <CardContent>
+          <p className="text-xs text-muted-foreground mb-2">
+            A written review of the event — what went well, what to improve, and suggestions for next time.
+            {isAdmin ? " Editable by admins. Use Markdown (## headings, - bullets)." : " Read-only."}
+          </p>
+          {isAdmin ? (
+            <Textarea value={analysis} onChange={(e) => setAnalysis(e.target.value)} rows={16}
+              placeholder="Click 'Generate with AI' for a draft based on the current event data, then edit as needed." />
+          ) : (
+            analysis
+              ? <pre className="whitespace-pre-wrap text-sm font-sans leading-relaxed">{analysis}</pre>
+              : <div className="text-sm text-muted-foreground">No post-event analysis yet.</div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
