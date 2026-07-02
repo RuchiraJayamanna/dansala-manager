@@ -227,6 +227,11 @@ function SummaryPage() {
       // Mark the first team table to start on a new page
       if (teamTables.length) teamTables[0].newPage = true;
       const completeTables = [
+        ...(((event as any)?.post_event_analysis) ? [{
+          title: "Post-Event Analysis", newPage: true,
+          head: [], body: [],
+          prose: String((event as any).post_event_analysis),
+        }] : []),
         { title: "Budget by Category", head: ["Category", "Planned", "Actual", "Variance"],
           body: Object.entries(byCat).map(([c, v]) => [c, lkr(v.p), lkr(v.a), lkr(v.p - v.a)]),
           foot: [["TOTAL", lkr(planned), lkr(actual), lkr(planned - actual)]] },
