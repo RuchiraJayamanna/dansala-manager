@@ -17,6 +17,12 @@ export type Event = {
   team_venues?: Record<string, string> | null;
   office_contribution?: number | null;
   is_public?: boolean;
+  visibility?: "public" | "internal" | "private";
+  currency?: string;
+  timezone?: string;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  post_event_analysis?: string | null;
 };
 
 type Ctx = {
