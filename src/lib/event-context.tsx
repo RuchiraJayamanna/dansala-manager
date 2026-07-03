@@ -7,7 +7,7 @@ export type Event = {
   name: string;
   year: number;
   location: string | null;
-  dansala_type: string | null;
+  event_category: string | null;
   event_date: string | null;
   status: string;
   notes: string | null;

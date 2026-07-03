@@ -43,7 +43,7 @@ export const generateEventAnalysis = createServerFn({ method: "POST" })
 
     const payload = {
       event: {
-        name: ev.data.name, year: ev.data.year, type: ev.data.dansala_type,
+        name: ev.data.name, year: ev.data.year, type: ev.data.event_category,
         location: ev.data.location, date: ev.data.event_date, status: ev.data.status,
         office_contribution: ev.data.office_contribution,
       },

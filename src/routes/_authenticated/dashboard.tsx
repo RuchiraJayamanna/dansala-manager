@@ -67,7 +67,7 @@ function Dashboard() {
   return (
     <div className="p-4 md:p-8 space-y-8 max-w-7xl">
       <header>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground"><CalendarRange className="h-3.5 w-3.5" />{event.dansala_type ?? "Dansala"} · {event.location ?? "—"} · {event.event_date ?? `${event.year}`}</div>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground"><CalendarRange className="h-3.5 w-3.5" />{event.event_category ?? "Dansala"} · {event.location ?? "—"} · {event.event_date ?? `${event.year}`}</div>
         <h1 className="text-3xl font-bold tracking-tight mt-1">{event.name}</h1>
         <p className="text-muted-foreground mt-1">Real-time snapshot of budget, teams, checklist and contributions.</p>
       </header>

@@ -25,7 +25,7 @@ function EventsPage() {
   const qc = useQueryClient();
   const { events, currentEvent, setCurrentEventId } = useEventCtx();
   const { isAdmin } = useIsAdmin();
-  const { data: types = [] } = useMasterOptions("dansala_type");
+  const { data: types = [] } = useMasterOptions("event_category");
   const { data: statuses = [] } = useMasterOptions("event_status");
 
   const [open, setOpen] = useState(false);
@@ -37,7 +37,7 @@ function EventsPage() {
         const { error } = await supabase.from("events").update(v as any).eq("id", editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("events").insert({ name: v.name || "", year: v.year || new Date().getFullYear(), location: v.location, dansala_type: v.dansala_type, event_date: v.event_date || null, status: v.status || "Planning", notes: v.notes, is_public: v.is_public ?? false } as any);
+        const { error } = await supabase.from("events").insert({ name: v.name || "", year: v.year || new Date().getFullYear(), location: v.location, event_category: v.event_category, event_date: v.event_date || null, status: v.status || "Planning", notes: v.notes, is_public: v.is_public ?? false } as any);
         if (error) throw error;
       }
     },
@@ -54,7 +54,7 @@ function EventsPage() {
     mutationFn: async (src: Event) => {
       const newName = `${src.name} (Copy)`;
       const { data: created, error } = await supabase.from("events").insert({
-        name: newName, year: src.year, location: src.location, dansala_type: src.dansala_type,
+        name: newName, year: src.year, location: src.location, event_category: src.event_category,
         event_date: null, status: "Planning", notes: src.notes, agenda_notes: src.agenda_notes ?? null,
         is_public: false,
       } as any).select().single();
@@ -104,7 +104,7 @@ function EventsPage() {
               <CardContent className="p-5 space-y-2">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <div className="text-xs text-muted-foreground">{e.dansala_type ?? "Dansala"} · {e.year}</div>
+                    <div className="text-xs text-muted-foreground">{e.event_category ?? "Dansala"} · {e.year}</div>
                     <div className="text-lg font-semibold">{e.name}</div>
                   </div>
                   <div className="flex flex-col items-end gap-1">
@@ -146,7 +146,7 @@ function EventsPage() {
 }
 
 function EventDialog({ initial, types, statuses, onSubmit }: { initial: Event | null; types: string[]; statuses: string[]; onSubmit: (v: Partial<Event>) => void }) {
-  const [f, setF] = useState<Partial<Event>>(initial ?? { name: "", year: new Date().getFullYear(), location: "", dansala_type: types[0] ?? "", event_date: "", status: statuses[0] ?? "Planning", notes: "", is_public: false });
+  const [f, setF] = useState<Partial<Event>>(initial ?? { name: "", year: new Date().getFullYear(), location: "", event_category: types[0] ?? "", event_date: "", status: statuses[0] ?? "Planning", notes: "", is_public: false });
   return (
     <DialogContent>
       <DialogHeader><DialogTitle>{initial ? "Edit" : "New"} event</DialogTitle></DialogHeader>
@@ -156,8 +156,8 @@ function EventDialog({ initial, types, statuses, onSubmit }: { initial: Event | 
           <div><Label>Year</Label><Input type="number" value={f.year ?? new Date().getFullYear()} onChange={e => setF({ ...f, year: Number(e.target.value) })} required /></div>
           <div><Label>Event date</Label><Input type="date" value={f.event_date ?? ""} onChange={e => setF({ ...f, event_date: e.target.value })} /></div>
           <div><Label>Location</Label><Input value={f.location ?? ""} onChange={e => setF({ ...f, location: e.target.value })} /></div>
-          <div><Label>Dansala type</Label>
-            <Select value={f.dansala_type ?? ""} onValueChange={v => setF({ ...f, dansala_type: v })}>
+          <div><Label>Event category</Label>
+            <Select value={f.event_category ?? ""} onValueChange={v => setF({ ...f, event_category: v })}>
               <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
               <SelectContent>{types.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
             </Select>
