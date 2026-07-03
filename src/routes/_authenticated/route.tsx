@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, Link, useNavigate, useRouterState } from "@tan
 import { supabase } from "@/integrations/supabase/client";
 import {
   LayoutDashboard, Wallet, Users, ListChecks, HandCoins, LogOut, Utensils,
-  UserCog, BarChart3, CalendarClock, CalendarRange, Settings, LogIn, ShieldCheck, ChevronsUpDown, Menu, FolderOpen, Boxes,
+  UserCog, BarChart3, CalendarClock, CalendarRange, Settings, LogIn, ShieldCheck, ChevronsUpDown, Menu, FolderOpen, Boxes, LayoutTemplate,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -35,6 +35,7 @@ const eventNav = [
 
 const topSetupNav = [
   { to: "/events", label: "Events / Projects", icon: CalendarRange },
+  { to: "/templates", label: "Event Templates", icon: LayoutTemplate },
   { to: "/staff", label: "Staff", icon: UserCog },
 ] as const;
 const setupTypes = [
