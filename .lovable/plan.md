@@ -1,41 +1,90 @@
 
-## Scope
-Multiple related improvements across exports, teams, checklist, and contributions.
+# Fix & Generalize Plan
 
-### 1. Exports (PDF + Excel)
-- **Teams export**: Group by Phase → Team (matching web view), include members under each team, plus team's important notes as bullets. One sheet per phase in Excel with team sub-headers; PDF gets a section per phase with sub-tables per team + notes.
-- **Checklist export**: include "Important notes" as bulleted block. Rename "Owner" column to "Responsible person(s)" and list multiple staff when assigned.
-- **Agenda export**: keep bulleted "Important notes" (already done; verify).
-- **Excel formulas**: replace hardcoded totals (e.g., `["TOTAL", planned, actual]`) with `=SUM(...)` formulas referencing the rows above. Applies in budget summary, contributions, checklist counts, complete summary.
-- **Scrollable list panels in web view**: wrap long lists (contributions table, checklist items, teams cards, agenda) in scroll containers with sticky headers so page header/actions stay visible.
+Four coordinated slices. Executed in this order so the destructive schema change lands once and everything downstream references the new shape.
 
-### 2. Checklist — multi-staff responsible person
-- Add `checklist_assignees` join table: `(checklist_item_id, staff_id)` with admin write / public read policies and grants.
-- UI: rename "Owner" → "Responsible person(s)". Show primary responsible + chips for added staff. Admin can add additional staff via a popover (multi-select). Display all names in list view, exports.
-- Keep existing `owner_staff_id` as the primary.
+## 1. Security — RLS lockdown (highest priority)
 
-### 3. Contributions — receipt attachments + office top-up
-- Add `contribution_receipts` table mirroring `budget_receipts`: `(contribution_id, file_path, file_name, uploaded_at)` + RLS + grants. Store files in existing `receipts` bucket under `contributions/` prefix.
-- UI: per-row paperclip button to upload + list/download/delete attached receipts (admin only). Public sees view link.
-- **Office top-up**: add `office_contribution` numeric column on `events` (or a per-contribution `funded_by` flag). Simpler: a single event-level "Office funded amount" (sometimes used). Show in contributions summary: Collected from staff + Office funded = Total available vs budget.
+Today every child table (`budget_items`, `contributions`, `checklist_items`, `checklist_assignees`, `agenda_items`, `team_members`, `budget_receipts`, `contribution_receipts`, `event_documents`, `item_checklist`, `staff`) has `SELECT USING (true)` for `anon` + `authenticated`. Anyone signed in — or even signed out on some tables — can read every event's data regardless of `events.is_public`.
 
-### 4. Teams — smarter staff picker + remove attendance checkbox
-- In "Assign member" dialog, filter staff list: hide staff already assigned to the **same (phase, team_name)** pair. Still show them when adding to a different team in the same phase, or different phase.
-- Remove the per-member attendance Checkbox in team cards (no current use); drop the `toggle` mutation. (Keep `attended` column in DB for historical data.)
+New rule for every event-scoped table:
 
-### 5. Scroll containers
-- For Contributions table, Checklist list, Teams (per-phase grid), and Agenda list: wrap in `max-h-[calc(100vh-Xrem)] overflow-y-auto` with a `sticky top-0` table header where applicable. Page chrome stays put.
+```sql
+USING (
+  public.has_role(auth.uid(), 'admin')
+  OR EXISTS (SELECT 1 FROM public.events e
+             WHERE e.id = <table>.event_id AND e.is_public = true)
+)
+```
 
-## Technical notes
-- New migration: `checklist_assignees` table, `contribution_receipts` table, `events.office_contribution` numeric column.
-- Update `event-context.tsx` type to include `office_contribution`.
-- `lib/export.ts`: extend `exportXlsx` to accept formula cells. Simplest: just inject `{ f: "SUM(F4:F12)" }` cells where needed. Switch from `aoa_to_sheet` rows to assembling rows with cell objects when a formula is needed (XLSX supports `{ t: 'n', f: 'SUM(...)' }`).
-- Web scroll containers: keep header outside, list body inside `ScrollArea` (already imported in some pages) or plain `overflow-y-auto` div.
+- Drop `anon` from all child-table SELECT policies (never intended).
+- `staff`, `master_options`, `app_settings` stay readable to any authenticated user (they're catalog data, not event data).
+- `user_roles` unchanged.
+- `event_documents` and receipts already scope by admin — verify they now also allow public-event read for authenticated users (needed so team members can see docs for their event).
 
-## Out of scope
-- Renaming the contributions module/labels beyond the office top-up addition.
-- Reworking master data screens.
-- Changing PDF visual theming.
+## 2. Schema generalization
 
-## Confirmation
-This is a large change set. Confirming this is the right shape before I implement; once approved I'll create the migration + edits in a single pass.
+Rename `events.dansala_type` → `events.event_category`. Nullable stays.
+Add:
+- `currency text NOT NULL DEFAULT 'LKR'`
+- `timezone text NOT NULL DEFAULT 'Asia/Colombo'`
+- `starts_at timestamptz`, `ends_at timestamptz` (keep `event_date` for back-compat; new UI writes both)
+- `visibility text NOT NULL DEFAULT 'private' CHECK (visibility IN ('public','internal','private'))` — kept alongside `is_public` for one release; trigger keeps them in sync.
+
+Rename `master_options` rows: `dansala_type` → `event_category`. Seed generic categories (`Conference`, `Workshop`, `Wedding`, `Community Event`, `Fundraiser`, `Other`) alongside existing entries so old data still resolves.
+
+## 3. Rebrand shell to Event Manager
+
+Text-only pass — no behavior change:
+- App title in `__root.tsx`, `auth.tsx`, `index.tsx`, every route `head()` — replace "Dansala Management System" / "Dansala Manager" with "Event Manager".
+- `format.ts`: `lkr()` becomes `money(amount, currency)` reading the event's currency; keep a thin `lkr()` alias for one release.
+- Sidebar / `route.tsx` copy: "Dansala type" → "Event category", "Dansala Manager" → "Event Manager".
+- README, `.lovable/project.json` name.
+- Field labels in `events.tsx`, `dashboard.tsx`, `setup.$type.tsx` — no Sinhala-phase-specific copy in generic screens.
+
+## 4. Event templates
+
+New table:
+
+```
+event_templates(id, name, description, event_category,
+                default_agenda jsonb, default_checklist jsonb,
+                default_budget_categories jsonb,
+                created_by uuid, created_at, updated_at)
+```
+
+- Admin-only RLS.
+- "Save as template" action on an existing event (snapshots agenda/checklist/budget skeleton).
+- "New event from template" flow in `events.tsx` — pick template, event is created and seeded.
+- Templates page added to sidebar under Settings.
+
+## Technical Details
+
+**Migration order (one migration file):**
+1. `ALTER TABLE events RENAME COLUMN dansala_type TO event_category`.
+2. Add new columns + check constraint + backfill `visibility` from `is_public`.
+3. Sync trigger `is_public ↔ visibility`.
+4. `UPDATE master_options SET option_type='event_category' WHERE option_type='dansala_type'`.
+5. Insert generic category master options.
+6. Create `event_templates` table with GRANTs, RLS, admin policy, `updated_at` trigger.
+7. Drop every `USING (true)` SELECT policy on child tables and replace with visibility-aware policy scoped to `authenticated` only.
+
+**Code updates after migration approval:**
+- Regenerate types (automatic).
+- `event-context.tsx` — `Event` type: rename field, add new fields.
+- Every route file — replace `dansala_type` with `event_category`, update labels.
+- `format.ts` — currency-aware helpers.
+- `events.tsx` — visibility select (`public|internal|private`), template picker, "Save as template".
+- New route `src/routes/_authenticated/templates.tsx`.
+- Sidebar (`_authenticated/route.tsx`) — add Templates link, rebrand copy.
+- `__root.tsx` / index / auth — new title + description.
+
+**Not in this pass** (called out in the earlier review, deferred):
+- Polymorphic attachments consolidation.
+- Per-event `event_members` roles / workspaces.
+- Public event landing pages.
+- Notifications / email.
+- Audit log.
+- Versioned analyses.
+
+Happy to tackle any of the deferred items in a follow-up.
