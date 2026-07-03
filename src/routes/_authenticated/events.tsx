@@ -7,8 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Check, Copy, Eye, EyeOff } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Plus, Pencil, Trash2, Check, Copy, Eye, EyeOff, Users2, BookmarkPlus, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
@@ -37,7 +36,14 @@ function EventsPage() {
         const { error } = await supabase.from("events").update(v as any).eq("id", editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("events").insert({ name: v.name || "", year: v.year || new Date().getFullYear(), location: v.location, event_category: v.event_category, event_date: v.event_date || null, status: v.status || "Planning", notes: v.notes, is_public: v.is_public ?? false } as any);
+        const { error } = await supabase.from("events").insert({
+          name: v.name || "", year: v.year || new Date().getFullYear(),
+          location: v.location, event_category: v.event_category,
+          event_date: v.event_date || null, status: v.status || "Planning",
+          notes: v.notes, visibility: (v as any).visibility ?? "private",
+          currency: (v as any).currency ?? "LKR",
+          timezone: (v as any).timezone ?? "Asia/Colombo",
+        } as any);
         if (error) throw error;
       }
     },
@@ -146,7 +152,7 @@ function EventsPage() {
 }
 
 function EventDialog({ initial, types, statuses, onSubmit }: { initial: Event | null; types: string[]; statuses: string[]; onSubmit: (v: Partial<Event>) => void }) {
-  const [f, setF] = useState<Partial<Event>>(initial ?? { name: "", year: new Date().getFullYear(), location: "", event_category: types[0] ?? "", event_date: "", status: statuses[0] ?? "Planning", notes: "", is_public: false });
+  const [f, setF] = useState<Partial<Event>>(initial ?? { name: "", year: new Date().getFullYear(), location: "", event_category: types[0] ?? "", event_date: "", status: statuses[0] ?? "Planning", notes: "", visibility: "private", currency: "LKR", timezone: "Asia/Colombo" });
   return (
     <DialogContent>
       <DialogHeader><DialogTitle>{initial ? "Edit" : "New"} event</DialogTitle></DialogHeader>
@@ -162,18 +168,32 @@ function EventDialog({ initial, types, statuses, onSubmit }: { initial: Event | 
               <SelectContent>{types.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <div className="col-span-2"><Label>Status</Label>
+          <div><Label>Status</Label>
             <Select value={f.status ?? "Planning"} onValueChange={v => setF({ ...f, status: v })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>{statuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
             </Select>
           </div>
+          <div><Label>Currency</Label>
+            <Select value={(f as any).currency ?? "LKR"} onValueChange={v => setF({ ...f, currency: v } as any)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {["LKR","USD","EUR","GBP","INR","AUD","CAD","JPY","SGD"].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="col-span-2"><Label>Visibility</Label>
+            <Select value={(f as any).visibility ?? (f.is_public ? "public" : "private")} onValueChange={v => setF({ ...f, visibility: v as any, is_public: v === "public" } as any)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="public">Public — anyone signed in can view</SelectItem>
+                <SelectItem value="internal">Internal — admins only for now</SelectItem>
+                <SelectItem value="private">Private — admins only</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <div><Label>Notes</Label><Input value={f.notes ?? ""} onChange={e => setF({ ...f, notes: e.target.value })} /></div>
-        <label className="flex items-center gap-2 text-sm cursor-pointer">
-          <Checkbox checked={!!f.is_public} onCheckedChange={(v) => setF({ ...f, is_public: !!v })} />
-          <span>Public — visible to everyone (unchecked = only admins can see this event)</span>
-        </label>
         <DialogFooter><Button type="submit">Save</Button></DialogFooter>
       </form>
     </DialogContent>
