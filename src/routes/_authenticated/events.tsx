@@ -94,14 +94,87 @@ function EventsPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const { data: templates = [] } = useQuery({
+    queryKey: ["event_templates"],
+    queryFn: async () => (await supabase.from("event_templates" as any).select("*").order("name")).data ?? [],
+  });
+
+  const newFromTemplate = useMutation({
+    mutationFn: async (tpl: any) => {
+      const { data: created, error } = await supabase.from("events").insert({
+        name: `${tpl.name} — ${new Date().getFullYear()}`,
+        year: new Date().getFullYear(),
+        event_category: tpl.event_category,
+        status: "Planning",
+        visibility: "private",
+        currency: "LKR",
+      } as any).select().single();
+      if (error) throw error;
+      const eid = created.id as string;
+      const agenda = Array.isArray(tpl.default_agenda) ? tpl.default_agenda : [];
+      const checklist = Array.isArray(tpl.default_checklist) ? tpl.default_checklist : [];
+      const budgetCats = Array.isArray(tpl.default_budget_categories) ? tpl.default_budget_categories : [];
+      const jobs: any[] = [];
+      if (agenda.length) jobs.push(supabase.from("agenda_items").insert(agenda.map((a: any, i: number) => ({ event_id: eid, title: a.title ?? "Item", description: a.description ?? null, sort_order: i }))));
+      if (checklist.length) jobs.push(supabase.from("checklist_items").insert(checklist.map((c: any) => ({ event_id: eid, title: c.title ?? "Task", status: "Pending" }))));
+      if (budgetCats.length) jobs.push(supabase.from("budget_items").insert(budgetCats.map((c: any) => ({ event_id: eid, category: typeof c === "string" ? c : c.category, item_name: "—", planned_amount: 0, actual_amount: 0 }))));
+      const r = await Promise.all(jobs);
+      for (const x of r) if ((x as any)?.error) throw (x as any).error;
+      return eid;
+    },
+    onSuccess: (id) => { qc.invalidateQueries(); setCurrentEventId(id); toast.success("Event created from template"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const saveAsTemplate = useMutation({
+    mutationFn: async (ev: Event) => {
+      const [a, c, b] = await Promise.all([
+        supabase.from("agenda_items").select("title, description, sort_order").eq("event_id", ev.id).order("sort_order"),
+        supabase.from("checklist_items").select("title").eq("event_id", ev.id),
+        supabase.from("budget_items").select("category").eq("event_id", ev.id),
+      ]);
+      const cats = Array.from(new Set((b.data ?? []).map((r: any) => r.category).filter(Boolean)));
+      const { error } = await supabase.from("event_templates" as any).insert({
+        name: `${ev.name} template`,
+        description: `Saved from “${ev.name}”`,
+        event_category: ev.event_category,
+        default_agenda: a.data ?? [],
+        default_checklist: c.data ?? [],
+        default_budget_categories: cats,
+      } as any);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["event_templates"] }); toast.success("Saved as template"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   return (
     <div className="p-4 md:p-8 space-y-6 max-w-6xl">
       <PageHeader title="Events / Projects" subtitle="Each event is a separate project with its own budget, teams and checklist."
         action={isAdmin && (
-          <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
-            <DialogTrigger asChild><Button onClick={() => setEditing(null)}><Plus className="h-4 w-4 mr-2" />New event</Button></DialogTrigger>
-            <EventDialog key={editing?.id ?? "new"} initial={editing} types={types.map(t => t.value)} statuses={statuses.map(s => s.value)} onSubmit={(v) => save.mutate(v)} />
-          </Dialog>
+          <div className="flex items-center gap-2">
+            {templates.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline"><Sparkles className="h-4 w-4 mr-2" />From template</Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64">
+                  {templates.map((t: any) => (
+                    <DropdownMenuItem key={t.id} onClick={() => newFromTemplate.mutate(t)}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{t.name}</span>
+                        {t.event_category && <span className="text-[11px] text-muted-foreground">{t.event_category}</span>}
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
+              <DialogTrigger asChild><Button onClick={() => setEditing(null)}><Plus className="h-4 w-4 mr-2" />New event</Button></DialogTrigger>
+              <EventDialog key={editing?.id ?? "new"} initial={editing} types={types.map(t => t.value)} statuses={statuses.map(s => s.value)} onSubmit={(v) => save.mutate(v)} />
+            </Dialog>
+          </div>
         )} />
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -134,6 +207,9 @@ function EventsPage() {
                       <Button size="icon" variant="ghost" title="Duplicate event"
                         onClick={() => { if (confirm(`Duplicate "${e.name}" with all budget, checklist, team and agenda data?`)) duplicate.mutate(e); }}>
                         <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" title="Save as template" onClick={() => saveAsTemplate.mutate(e)}>
+                        <BookmarkPlus className="h-4 w-4" />
                       </Button>
                       <Button size="icon" variant="ghost" onClick={() => del.mutate(e.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                     </>
