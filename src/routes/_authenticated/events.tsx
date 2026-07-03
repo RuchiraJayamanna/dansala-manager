@@ -14,6 +14,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { useMasterOptions } from "@/lib/master";
 import { useEventCtx, type Event } from "@/lib/event-context";
 import { useIsAdmin } from "@/lib/use-is-admin";
+import { useQuery } from "@tanstack/react-query";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export const Route = createFileRoute("/_authenticated/events")({
   head: () => ({ meta: [{ title: "Events — Event Manager" }] }),
