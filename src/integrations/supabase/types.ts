@@ -426,12 +426,53 @@ export type Database = {
           },
         ]
       }
+      event_templates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          default_agenda: Json
+          default_budget_categories: Json
+          default_checklist: Json
+          description: string | null
+          event_category: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          default_agenda?: Json
+          default_budget_categories?: Json
+          default_checklist?: Json
+          description?: string | null
+          event_category?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          default_agenda?: Json
+          default_budget_categories?: Json
+          default_checklist?: Json
+          description?: string | null
+          event_category?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       events: {
         Row: {
           agenda_notes: string | null
           checklist_notes: string | null
           created_at: string
-          dansala_type: string | null
+          currency: string
+          ends_at: string | null
+          event_category: string | null
           event_date: string | null
           id: string
           is_public: boolean
@@ -440,17 +481,22 @@ export type Database = {
           notes: string | null
           office_contribution: number
           post_event_analysis: string | null
+          starts_at: string | null
           status: string
           team_notes: Json
           team_venues: Json
+          timezone: string
           updated_at: string
+          visibility: string
           year: number
         }
         Insert: {
           agenda_notes?: string | null
           checklist_notes?: string | null
           created_at?: string
-          dansala_type?: string | null
+          currency?: string
+          ends_at?: string | null
+          event_category?: string | null
           event_date?: string | null
           id?: string
           is_public?: boolean
@@ -459,17 +505,22 @@ export type Database = {
           notes?: string | null
           office_contribution?: number
           post_event_analysis?: string | null
+          starts_at?: string | null
           status?: string
           team_notes?: Json
           team_venues?: Json
+          timezone?: string
           updated_at?: string
+          visibility?: string
           year: number
         }
         Update: {
           agenda_notes?: string | null
           checklist_notes?: string | null
           created_at?: string
-          dansala_type?: string | null
+          currency?: string
+          ends_at?: string | null
+          event_category?: string | null
           event_date?: string | null
           id?: string
           is_public?: boolean
@@ -478,10 +529,13 @@ export type Database = {
           notes?: string | null
           office_contribution?: number
           post_event_analysis?: string | null
+          starts_at?: string | null
           status?: string
           team_notes?: Json
           team_venues?: Json
+          timezone?: string
           updated_at?: string
+          visibility?: string
           year?: number
         }
         Relationships: []

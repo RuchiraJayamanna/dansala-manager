@@ -43,7 +43,7 @@ export const generateEventAnalysis = createServerFn({ method: "POST" })
 
     const payload = {
       event: {
-        name: ev.data.name, year: ev.data.year, type: ev.data.dansala_type,
+        name: ev.data.name, year: ev.data.year, type: ev.data.event_category,
         location: ev.data.location, date: ev.data.event_date, status: ev.data.status,
         office_contribution: ev.data.office_contribution,
       },
@@ -58,7 +58,7 @@ export const generateEventAnalysis = createServerFn({ method: "POST" })
     const apiKey = process.env.LOVABLE_API_KEY;
     if (!apiKey) throw new Response("AI not configured", { status: 500 });
 
-    const prompt = `You are an event operations analyst reviewing a completed Dansala (Buddhist alms-giving) event. Based on the JSON data below, write a concise post-event analysis in clean Markdown with these sections:
+    const prompt = `You are an event operations analyst reviewing a completed event. Based on the JSON data below, write a concise post-event analysis in clean Markdown with these sections:
 
 ## Overview
 2-3 sentences describing the event outcome and financial health.
@@ -72,7 +72,7 @@ Bullet points of concerns (e.g. budget overruns, overdue tasks, low contribution
 ## Suggestions for Next Year
 Actionable, specific suggestions grounded in the numbers. Include budget adjustments where categories overran.
 
-Keep the whole response under 400 words. Use plain LKR (Rs.) formatting. Do not fabricate facts not in the data.
+Keep the whole response under 400 words. Use the event's local currency formatting. Do not fabricate facts not in the data.
 
 DATA:
 ${JSON.stringify(payload, null, 2)}`;

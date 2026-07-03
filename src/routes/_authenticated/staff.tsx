@@ -17,7 +17,7 @@ import { exportXlsx, exportPdf } from "@/lib/export";
 import { useIsAdmin } from "@/lib/use-is-admin";
 
 export const Route = createFileRoute("/_authenticated/staff")({
-  head: () => ({ meta: [{ title: "Staff — Dansala Management System" }] }),
+  head: () => ({ meta: [{ title: "Staff — Event Manager" }] }),
   component: StaffPage,
 });
 

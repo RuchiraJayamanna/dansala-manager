@@ -20,7 +20,7 @@ import { useCurrentEvent, useCurrentEventId } from "@/lib/event-context";
 import { useIsAdmin } from "@/lib/use-is-admin";
 
 export const Route = createFileRoute("/_authenticated/contributions")({
-  head: () => ({ meta: [{ title: "Contributions — Dansala Management System" }] }),
+  head: () => ({ meta: [{ title: "Contributions — Event Manager" }] }),
   component: ContributionsPage,
 });
 

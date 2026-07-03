@@ -13,7 +13,7 @@ import { useIsAdmin } from "@/lib/use-is-admin";
 import { ShieldCheck, Info } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/settings")({
-  head: () => ({ meta: [{ title: "Settings — Dansala Management System" }] }),
+  head: () => ({ meta: [{ title: "Settings — Event Manager" }] }),
   component: SettingsPage,
 });
 
@@ -41,7 +41,7 @@ function SettingsPage() {
         <CardHeader><CardTitle className="text-base">Organisation</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           <div><Label>Organisation / company name</Label>
-            <Input value={name} onChange={e => setName(e.target.value)} disabled={!isAdmin} placeholder="Dansala Management System" />
+            <Input value={name} onChange={e => setName(e.target.value)} disabled={!isAdmin} placeholder="Event Manager" />
             <p className="text-xs text-muted-foreground mt-1">Shown in the sidebar header.</p>
           </div>
           {isAdmin && <Button onClick={() => save.mutate(name)}>Save</Button>}

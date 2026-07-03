@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, Link, useNavigate, useRouterState } from "@tan
 import { supabase } from "@/integrations/supabase/client";
 import {
   LayoutDashboard, Wallet, Users, ListChecks, HandCoins, LogOut, Utensils,
-  UserCog, BarChart3, CalendarClock, CalendarRange, Settings, LogIn, ShieldCheck, ChevronsUpDown, Menu, FolderOpen, Boxes,
+  UserCog, BarChart3, CalendarClock, CalendarRange, Settings, LogIn, ShieldCheck, ChevronsUpDown, Menu, FolderOpen, Boxes, LayoutTemplate,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -35,6 +35,7 @@ const eventNav = [
 
 const topSetupNav = [
   { to: "/events", label: "Events / Projects", icon: CalendarRange },
+  { to: "/templates", label: "Event Templates", icon: LayoutTemplate },
   { to: "/staff", label: "Staff", icon: UserCog },
 ] as const;
 const setupTypes = [
@@ -42,7 +43,7 @@ const setupTypes = [
   { type: "team_group", label: "Team Groups" },
   { type: "department", label: "Departments" },
   { type: "designation", label: "Designations" },
-  { type: "dansala_type", label: "Dansala Types" },
+  { type: "event_category", label: "Event Categories" },
   { type: "unit", label: "Units of Measure" },
   { type: "phase", label: "Event Phases" },
   { type: "member_role", label: "Member Roles" },
@@ -57,7 +58,7 @@ function Layout() {
   const { events, currentEvent, setCurrentEventId } = useEventCtx();
   const { isAdmin, userId } = useIsAdmin();
   const { data: settings } = useAppSettings();
-  const companyName = settings?.company_name || "Dansala Management System";
+  const companyName = settings?.company_name || "Event Manager";
   const [mobileOpen, setMobileOpen] = useState(false);
   useEffect(() => { setMobileOpen(false); }, [pathname]);
 

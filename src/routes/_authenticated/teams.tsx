@@ -20,7 +20,7 @@ import { useCurrentEvent, useCurrentEventId } from "@/lib/event-context";
 import { useIsAdmin } from "@/lib/use-is-admin";
 
 export const Route = createFileRoute("/_authenticated/teams")({
-  head: () => ({ meta: [{ title: "Teams — Dansala Management System" }] }),
+  head: () => ({ meta: [{ title: "Teams — Event Manager" }] }),
   component: TeamsPage,
 });
 
@@ -35,7 +35,7 @@ function TeamsPage() {
   const { data: phaseOpts = [] } = useMasterOptions("phase");
   const { data: teamOpts = [] } = useMasterOptions("team_group");
   const { data: roleOpts = [] } = useMasterOptions("member_role");
-  const PHASES = phaseOpts.length ? phaseOpts.map(p => p.value) : ["Preparation", "Dansala Day"];
+  const PHASES = phaseOpts.length ? phaseOpts.map(p => p.value) : ["Preparation", "Event Day"];
   const TEAMS = teamOpts.map(t => t.value);
   const ROLES = roleOpts.map(r => r.value);
 

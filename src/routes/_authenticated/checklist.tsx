@@ -21,7 +21,7 @@ import { useIsAdmin } from "@/lib/use-is-admin";
 import { notesToBullets } from "@/components/BulletNotes";
 
 export const Route = createFileRoute("/_authenticated/checklist")({
-  head: () => ({ meta: [{ title: "Checklist — Dansala Management System" }] }),
+  head: () => ({ meta: [{ title: "Checklist — Event Manager" }] }),
   component: ChecklistPage,
 });
 
