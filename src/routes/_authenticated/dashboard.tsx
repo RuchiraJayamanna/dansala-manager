@@ -9,7 +9,7 @@ import { useCurrentEvent, useCurrentEventId } from "@/lib/event-context";
 import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
-  head: () => ({ meta: [{ title: "Dashboard — Dansala Management System" }] }),
+  head: () => ({ meta: [{ title: "Dashboard — Event Manager" }] }),
   component: Dashboard,
 });
 
@@ -67,7 +67,7 @@ function Dashboard() {
   return (
     <div className="p-4 md:p-8 space-y-8 max-w-7xl">
       <header>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground"><CalendarRange className="h-3.5 w-3.5" />{event.event_category ?? "Dansala"} · {event.location ?? "—"} · {event.event_date ?? `${event.year}`}</div>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground"><CalendarRange className="h-3.5 w-3.5" />{event.event_category ?? "General"} · {event.location ?? "—"} · {event.event_date ?? `${event.year}`}</div>
         <h1 className="text-3xl font-bold tracking-tight mt-1">{event.name}</h1>
         <p className="text-muted-foreground mt-1">Real-time snapshot of budget, teams, checklist and contributions.</p>
       </header>

@@ -18,7 +18,7 @@ import { useMasterOptions } from "@/lib/master";
 import { exportXlsx, exportPdf } from "@/lib/export";
 
 export const Route = createFileRoute("/_authenticated/items")({
-  head: () => ({ meta: [{ title: "Item Checklist — Dansala Management System" }] }),
+  head: () => ({ meta: [{ title: "Item Checklist — Event Manager" }] }),
   component: ItemsPage,
 });
 

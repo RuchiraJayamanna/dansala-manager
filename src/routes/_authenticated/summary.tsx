@@ -17,7 +17,7 @@ import { useIsAdmin } from "@/lib/use-is-admin";
 import { generateEventAnalysis } from "@/lib/ai-analysis.functions";
 
 export const Route = createFileRoute("/_authenticated/summary")({
-  head: () => ({ meta: [{ title: "Summary — Dansala Management System" }] }),
+  head: () => ({ meta: [{ title: "Summary — Event Manager" }] }),
   component: SummaryPage,
 });
 

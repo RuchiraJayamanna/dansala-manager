@@ -19,7 +19,7 @@ import { useCurrentEvent, useCurrentEventId } from "@/lib/event-context";
 import { useIsAdmin } from "@/lib/use-is-admin";
 
 export const Route = createFileRoute("/_authenticated/budget")({
-  head: () => ({ meta: [{ title: "Budget — Dansala Management System" }] }),
+  head: () => ({ meta: [{ title: "Budget — Event Manager" }] }),
   component: BudgetPage,
 });
 

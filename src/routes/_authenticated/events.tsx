@@ -17,7 +17,7 @@ import { useEventCtx, type Event } from "@/lib/event-context";
 import { useIsAdmin } from "@/lib/use-is-admin";
 
 export const Route = createFileRoute("/_authenticated/events")({
-  head: () => ({ meta: [{ title: "Events — Dansala Management System" }] }),
+  head: () => ({ meta: [{ title: "Events — Event Manager" }] }),
   component: EventsPage,
 });
 
@@ -88,7 +88,7 @@ function EventsPage() {
 
   return (
     <div className="p-4 md:p-8 space-y-6 max-w-6xl">
-      <PageHeader title="Events / Projects" subtitle="Each Dansala event is a separate project with its own budget, teams and checklist."
+      <PageHeader title="Events / Projects" subtitle="Each event is a separate project with its own budget, teams and checklist."
         action={isAdmin && (
           <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
             <DialogTrigger asChild><Button onClick={() => setEditing(null)}><Plus className="h-4 w-4 mr-2" />New event</Button></DialogTrigger>
@@ -104,7 +104,7 @@ function EventsPage() {
               <CardContent className="p-5 space-y-2">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <div className="text-xs text-muted-foreground">{e.event_category ?? "Dansala"} · {e.year}</div>
+                    <div className="text-xs text-muted-foreground">{e.event_category ?? "General"} · {e.year}</div>
                     <div className="text-lg font-semibold">{e.name}</div>
                   </div>
                   <div className="flex flex-col items-end gap-1">
@@ -151,7 +151,7 @@ function EventDialog({ initial, types, statuses, onSubmit }: { initial: Event | 
     <DialogContent>
       <DialogHeader><DialogTitle>{initial ? "Edit" : "New"} event</DialogTitle></DialogHeader>
       <form onSubmit={(e) => { e.preventDefault(); onSubmit(f); }} className="space-y-3">
-        <div><Label>Event name</Label><Input value={f.name ?? ""} onChange={e => setF({ ...f, name: e.target.value })} required placeholder="e.g. Annual Dansala 2026" /></div>
+        <div><Label>Event name</Label><Input value={f.name ?? ""} onChange={e => setF({ ...f, name: e.target.value })} required placeholder="e.g. Annual Event 2026" /></div>
         <div className="grid grid-cols-2 gap-3">
           <div><Label>Year</Label><Input type="number" value={f.year ?? new Date().getFullYear()} onChange={e => setF({ ...f, year: Number(e.target.value) })} required /></div>
           <div><Label>Event date</Label><Input type="date" value={f.event_date ?? ""} onChange={e => setF({ ...f, event_date: e.target.value })} /></div>

@@ -57,7 +57,7 @@ function Layout() {
   const { events, currentEvent, setCurrentEventId } = useEventCtx();
   const { isAdmin, userId } = useIsAdmin();
   const { data: settings } = useAppSettings();
-  const companyName = settings?.company_name || "Dansala Management System";
+  const companyName = settings?.company_name || "Event Manager";
   const [mobileOpen, setMobileOpen] = useState(false);
   useEffect(() => { setMobileOpen(false); }, [pathname]);
 

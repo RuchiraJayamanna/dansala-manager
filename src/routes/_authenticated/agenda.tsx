@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { BulletNotes } from "@/components/BulletNotes";
 
 export const Route = createFileRoute("/_authenticated/agenda")({
-  head: () => ({ meta: [{ title: "Agenda — Dansala Management System" }] }),
+  head: () => ({ meta: [{ title: "Agenda — Event Manager" }] }),
   component: AgendaPage,
 });
 

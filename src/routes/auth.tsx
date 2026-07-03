@@ -10,7 +10,7 @@ import { Utensils } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Sign in — Dansala Manager" }] }),
+  head: () => ({ meta: [{ title: "Sign in — Event Manager" }] }),
   component: AuthPage,
 });
 
@@ -41,7 +41,7 @@ function AuthPage() {
             <Utensils className="h-7 w-7" />
           </div>
           <CardTitle className="text-2xl">Admin Sign-in</CardTitle>
-          <p className="text-sm text-muted-foreground">Dansala Management System · administrators only</p>
+          <p className="text-sm text-muted-foreground">Event Manager · administrators only</p>
         </CardHeader>
         <CardContent>
           <form onSubmit={submit} className="space-y-4">

@@ -4,8 +4,8 @@ export const Route = createFileRoute("/")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Dansala Management System" },
-      { name: "description", content: "Plan, track and run Dansala events end-to-end." },
+      { title: "Event Manager" },
+      { name: "description", content: "Plan, track and run events end-to-end." },
     ],
   }),
   component: () => <Navigate to="/dashboard" replace />,

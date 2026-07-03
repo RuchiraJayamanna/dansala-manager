@@ -16,7 +16,7 @@ import { useCurrentEvent, useCurrentEventId } from "@/lib/event-context";
 import { useIsAdmin } from "@/lib/use-is-admin";
 
 export const Route = createFileRoute("/_authenticated/documents")({
-  head: () => ({ meta: [{ title: "Documents — Dansala Management System" }] }),
+  head: () => ({ meta: [{ title: "Documents — Event Manager" }] }),
   component: DocumentsPage,
 });
 
