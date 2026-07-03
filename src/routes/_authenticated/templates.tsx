@@ -36,7 +36,7 @@ function TemplatesPage() {
 
   const { data: rows = [] } = useQuery({
     queryKey: ["event_templates"],
-    queryFn: async () => (await supabase.from("event_templates" as any).select("*").order("name")).data as Tpl[] ?? [],
+    queryFn: async () => ((await supabase.from("event_templates" as any).select("*").order("name")).data as unknown as Tpl[]) ?? [],
   });
 
   const save = useMutation({
@@ -124,9 +124,9 @@ function TemplateDialog({ initial, onSubmit }: { initial: Tpl | null; onSubmit: 
         e.preventDefault();
         onSubmit({
           name, description, event_category: category || null,
-          default_agenda: agenda.split("\n").map(s => s.trim()).filter(Boolean).map((title, i) => ({ title, sort_order: i })),
-          default_checklist: checklist.split("\n").map(s => s.trim()).filter(Boolean).map(title => ({ title })),
-          default_budget_categories: budgetCats.split("\n").map(s => s.trim()).filter(Boolean),
+          default_agenda: agenda.split("\n").map((s: string) => s.trim()).filter(Boolean).map((title: string, i: number) => ({ title, sort_order: i })),
+          default_checklist: checklist.split("\n").map((s: string) => s.trim()).filter(Boolean).map((title: string) => ({ title })),
+          default_budget_categories: budgetCats.split("\n").map((s: string) => s.trim()).filter(Boolean),
         });
       }} className="space-y-3">
         <div><Label>Name</Label><Input value={name} onChange={e => setName(e.target.value)} required /></div>
