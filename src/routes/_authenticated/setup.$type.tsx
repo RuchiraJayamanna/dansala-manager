@@ -16,7 +16,7 @@ const TYPE_LABELS: Record<string, string> = {
   team_group: "Team Groups",
   department: "Departments",
   designation: "Designations",
-  dansala_type: "Dansala Types",
+  event_category: "Event Categories",
   unit: "Units of Measure",
   phase: "Event Phases",
   member_role: "Member Roles",
@@ -27,7 +27,7 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export const Route = createFileRoute("/_authenticated/setup/$type")({
-  head: () => ({ meta: [{ title: "Setup — Dansala Management System" }] }),
+  head: () => ({ meta: [{ title: "Setup — Event Manager" }] }),
   component: SetupPage,
 });
 
@@ -48,7 +48,7 @@ const CASCADE: Record<string, Array<{ table: string; column: string }>> = {
   checklist_status: [{ table: "checklist_items", column: "status" }],
   contribution_status: [{ table: "contributions", column: "status" }],
   contribution_team: [{ table: "contributions", column: "team" }],
-  dansala_type: [{ table: "events", column: "dansala_type" }],
+  event_category: [{ table: "events", column: "event_category" }],
   event_status: [{ table: "events", column: "status" }],
 };
 

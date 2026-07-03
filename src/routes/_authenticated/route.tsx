@@ -42,7 +42,7 @@ const setupTypes = [
   { type: "team_group", label: "Team Groups" },
   { type: "department", label: "Departments" },
   { type: "designation", label: "Designations" },
-  { type: "dansala_type", label: "Dansala Types" },
+  { type: "event_category", label: "Event Categories" },
   { type: "unit", label: "Units of Measure" },
   { type: "phase", label: "Event Phases" },
   { type: "member_role", label: "Member Roles" },
